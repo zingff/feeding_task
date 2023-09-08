@@ -1,0 +1,15 @@
+<!--Launch file for using the acutal arm
+        Launches GPD, Vision, and Pick/place node -->
+<launch>
+
+    <include file="$(find gpd_ros)/launch/gen3.launch"/>
+
+    <include file="$(find kinova_vision)/launch/kinova_vision.launch">
+        <arg name="device" value="192.168.1.10"/>
+    </include>
+
+    <group ns = "/my_gen3">
+        <node pkg="gpd_pick_and_place" name="gpd_grasping_node" type="gpd_grasping_node" output="screen"/>
+    </group>
+
+</launch>

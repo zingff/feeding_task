@@ -1,0 +1,9 @@
+<launch>
+    <node pkg="anygrasp_generation" type="anygrasp_publisher.py" name="anygrasp_publisher" output="screen" required="true"/>
+
+    <group ns = "/my_gen3">
+        <node pkg="gpd_pick_and_place" name="reach_food_item" type="reach_food_item" output="screen" required="true"/>
+
+    </group>
+
+</launch>

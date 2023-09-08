@@ -1,0 +1,11 @@
+<launch>
+    <node pkg="anygrasp_generation" type="anygrasp_publisher.py" name="anygrasp_publisher" output="screen" required="true"/>
+
+    <group ns = "/my_gen3">
+        <node pkg="gpd_pick_and_place" name="door_handle_grasp" type="door_handle_grasp" output="screen" required="true"/>
+
+    </group>
+
+
+
+</launch>

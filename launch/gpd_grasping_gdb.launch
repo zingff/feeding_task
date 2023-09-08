@@ -1,0 +1,11 @@
+<!--Launches GPD and the Pick/Place Node with Debug-->
+
+<launch>
+    <arg name="launch-prefix" default="gdb -ex run --args"/>
+    <include file="$(find gpd_ros)/launch/gen3.launch"/>
+
+    <group ns = "/my_gen3">
+        <node pkg="gpd_pick_and_place" name="gpd_grasping_node" type="gpd_grasping_node" output="screen" launch-prefix="$(arg launch-prefix)"/>
+    </group>
+
+</launch>
