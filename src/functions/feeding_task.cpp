@@ -153,7 +153,6 @@ void Manipulation::bite_transfer()
 
   this->pose_success = (this->move_group_ptr->plan(this->my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
   this->move_group_ptr->move();
-  trajectory_saving();
   // this->my_plan.trajectory_.joint_trajectory.joint_names
 
   ros::Duration(0.5).sleep();

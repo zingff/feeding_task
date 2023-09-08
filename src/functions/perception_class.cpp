@@ -1,6 +1,4 @@
-/*****************************************************************
-  Perception Function Definitions
-*****************************************************************/
+//not currently used
 
 #include "perception_class.hpp"
 

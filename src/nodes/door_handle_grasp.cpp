@@ -1,7 +1,3 @@
-/*****************************************************************
-  Main Node for Gen3 GPD grasping
-*****************************************************************/
-
 #include "manipulation_class.hpp"
 #include <anygrasp_generation/AnyGraspGeneration.h>
 #include <tf2_ros/transform_broadcaster.h>

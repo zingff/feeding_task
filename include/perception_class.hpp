@@ -1,7 +1,3 @@
-/*****************************************************************
-  Perception Class Definition
-*****************************************************************/
-
 #ifndef PERCEPTION_CLASS_HPP
 #define PERCEPTION_CLASS_HPP
 
@@ -32,7 +28,6 @@
 
 using namespace pcl;
 
-// Smart pointer for transforms
 typedef boost::shared_ptr<tf::TransformListener> TransformListenerPtr;
 
 class Perception
@@ -52,12 +47,10 @@ public:
     void concatenate_clouds();
     void publish();
 
-    // Image functions
     void snapshot_left();
     void snapshot_right();
     void snapshot_top();
 
-    // Filter functions
     void passthrough_filter(PointCloud<PointXYZ>::Ptr);
     void segmentPlane(PointCloud<PointXYZ>::Ptr);
     void voxelGrid(PointCloud<PointXYZ>::Ptr);

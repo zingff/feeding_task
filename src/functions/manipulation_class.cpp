@@ -10,22 +10,16 @@
 
 typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> TrajectoryClient;
 
-// Manipulation constructor, init planning_group 
 Manipulation::Manipulation(ros::NodeHandle nodeHandle, std::string planning_group)
 {
     PLANNING_GROUP = planning_group;
-    // grasp_config = nodeHandle.subscribe("/detect_grasps/clustered_grasps", 1, &Manipulation::callback, this); // Subscribe to GPD output
     this->gripper_command = nodeHandle.advertise<control_msgs::GripperCommandActionGoal>("robotiq_2f_85_gripper_controller/gripper_cmd/goal", 10);
-    // grasps_visualization_pub_ = nodeHandle.advertise<geometry_msgs::PoseArray>("grasps_visualization", 10);
     grasps_visualization_pub_ = nodeHandle.advertise<visualization_msgs::Marker>("grasps_visualization", 10);
 
 }
 
-
-// Get robot state and move to specified joint_group_position: 
 void Manipulation::getCurrentState()
 {
-
     const robot_state::JointModelGroup *joint_model_group =
         move_group_ptr->getCurrentState()->getJointModelGroup(PLANNING_GROUP);
     current_state = move_group_ptr->getCurrentState();
@@ -33,14 +27,12 @@ void Manipulation::getCurrentState()
 }
 
 
-// Move to specified joint values: 
 void Manipulation::move(std::vector<double>)
 {
     move_group_ptr->setJointValueTarget(joint_group_positions);
     move_group_ptr->move();
 }
 
-// Set joint values: 
 void Manipulation::setJointGroup(double j0, double j1, double j2, double j3, double j4, double j5, double j6)
 {
     joint_group_positions[0] = j0; // base
@@ -50,32 +42,6 @@ void Manipulation::setJointGroup(double j0, double j1, double j2, double j3, dou
     joint_group_positions[4] = j4;
     joint_group_positions[5] = j5;
     joint_group_positions[6] = j6; // gripper
-}
-
-
-// Preset arm positions: 
-void Manipulation::goRight()
-{
-    getCurrentState();
-    ROS_INFO("Moving to Right Position");
-    setJointGroup(pi / 1.8, pi / 3, -pi / 3, pi / 2, 0, pi / 3, pi / 7);
-    move(joint_group_positions);
-}
-
-void Manipulation::goLeft()
-{
-    getCurrentState();
-    ROS_INFO("Moving to Left Position");
-    setJointGroup(-pi / 1.8, pi / 3, pi / 3, pi / 2, 0, pi / 3, 2.8);
-    move(joint_group_positions);
-}
-
-void Manipulation::goVertical()
-{
-    getCurrentState();
-    ROS_INFO("Moving to Vertical Position");
-    setJointGroup(0, 0, 0, 0, 0, 0, 0);
-    move(joint_group_positions);
 }
 
 void Manipulation::get_utensil()
@@ -109,46 +75,9 @@ void Manipulation::get_utensil()
     goTop();
 }
 
-void Manipulation::trajectory_saving()
-{
-      // Extract waypoints
-    std::vector<trajectory_msgs::JointTrajectoryPoint> waypoints = this->my_plan.trajectory_.joint_trajectory.points;
-
-    // Save waypoints to a file
-    std::ofstream outfile("/home/zing/mealAssistiveRobot/sla_ws/src/object_grasping/data/trajectory_waypoints.txt");
-    for (const auto &point : waypoints)
-    {
-        for (const auto &position : point.positions)
-        {
-            outfile << position << " ";
-        }
-        outfile << "\n";
-    }
-    outfile.close();
-
-
-    // // Read waypoints from the file
-    // std::ifstream infile("trajectory_waypoints.txt");
-    // std::string line;
-    // while (std::getline(infile, line))
-    // {
-    //     std::istringstream iss(line);
-    //     trajectory_msgs::JointTrajectoryPoint replay_point;
-    //     double value;
-    //     while (iss >> value)
-    //     {
-    //         replay_point.positions.push_back(value);
-    //     }
-
-    //     // Send the replay_point to your robot's controller for execution
-    //     // You would need to implement the publishing to the robot's controller here
-    // }
-    // infile.close();
-}
-
+// Not used, to detele
 void Manipulation::trajectory_replay(std::string waypoint_path)
 {
-    // Load waypoints from the file
     std::ifstream infile(waypoint_path);
     std::string line;
     std::vector<trajectory_msgs::JointTrajectoryPoint> waypoints;
@@ -165,11 +94,9 @@ void Manipulation::trajectory_replay(std::string waypoint_path)
     }
     infile.close();
 
-    // Load robot model
     robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
     const robot_model::RobotModelPtr &robot_model = robot_model_loader.getModel();
 
-    // Apply joint limits clipping to the waypoint positions
     for (auto &waypoint : waypoints)
     {
         for (size_t j = 0; j < waypoint.positions.size(); ++j)
@@ -182,37 +109,28 @@ void Manipulation::trajectory_replay(std::string waypoint_path)
         }
     }
 
-    // Create a trajectory
     trajectory_msgs::JointTrajectory trajectory;
     trajectory.joint_names = move_group_ptr->getJointNames();
 
-    // Modify the first and last waypoints for gradual acceleration and deceleration
-    double max_speed = 0.8; // Modify this value as needed
+    double max_speed = 0.8;
     trajectory_msgs::JointTrajectoryPoint modified_first_waypoint = waypoints.front();
     trajectory_msgs::JointTrajectoryPoint modified_last_waypoint = waypoints.back();
 
-    // Adjust positions of modified_first_waypoint and modified_last_waypoint if needed
+    modified_first_waypoint.time_from_start = ros::Duration(1.0); 
+    modified_last_waypoint.time_from_start = ros::Duration(1.0);
 
-    // Add gradual acceleration and deceleration
-    modified_first_waypoint.time_from_start = ros::Duration(1.0); // Adjust as needed
-    modified_last_waypoint.time_from_start = ros::Duration(1.0); // Adjust as needed
-
-    // Insert modified_first_waypoint at the beginning of the trajectory
     trajectory.points.push_back(modified_first_waypoint);
 
-    // Populate the trajectory with waypoints
     for (const auto &waypoint : waypoints)
     {
         trajectory_msgs::JointTrajectoryPoint traj_point;
         traj_point.positions = waypoint.positions;
-        traj_point.time_from_start = ros::Duration(1.0); // No delay between waypoints
+        traj_point.time_from_start = ros::Duration(1.0);
         trajectory.points.push_back(traj_point);
     }
 
-    // Insert modified_last_waypoint at the end of the trajectory
     trajectory.points.push_back(modified_last_waypoint);
 
-    // Execute the trajectory using the action interface
     TrajectoryClient client("/my_gen3/gen3_joint_trajectory_controller/follow_joint_trajectory", true);
     client.waitForServer();
     control_msgs::FollowJointTrajectoryGoal goal;
@@ -220,7 +138,6 @@ void Manipulation::trajectory_replay(std::string waypoint_path)
     client.sendGoal(goal);
     client.waitForResult();
 }
-
 
 void Manipulation::goTop()
 {
@@ -235,7 +152,7 @@ void Manipulation::goTop()
     move(joint_group_positions);
 }
 
-
+// Not used, to detele
 void Manipulation::goDown()
 {
   getCurrentState();
@@ -245,15 +162,7 @@ void Manipulation::goDown()
   move(joint_group_positions);
 }
 
-
-// void Manipulation::goTop()
-// {
-//     getCurrentState();
-//     ROS_INFO("Moving to Top Position");
-//     setJointGroup(0.0430224, 5.93703 + 6.28, 6.26932 - 6.28, 2.19543, 6.25847 - 6.28, 0.916653, 4.7587 - 6.28);
-//     move(joint_group_positions);
-// }
-
+// Not used, to detele
 void Manipulation::lastJointRotation(double rotate_angle)
 {
   getCurrentState();
@@ -268,23 +177,7 @@ void Manipulation::lastJointRotation(double rotate_angle)
   move(joint_group_positions);
 }
 
-void Manipulation::goPostGrasp()
-{
-    getCurrentState();
-    ROS_INFO("Moving to Post Grasp Position");
-    setJointGroup(-0.06, 0.4309, 0.0458, 2.1915, -0.0325, -1.043, -1.567);
-    move(joint_group_positions);
-    // open_gripper();
-}
-
-void Manipulation::goPlace()
-{
-    getCurrentState();
-    ROS_INFO("Moving to Place Position");
-    setJointGroup(pi, pi / 4, 0, pi / 4, 0, pi / 2, -pi / 2);
-    move(joint_group_positions);
-}
-
+// Not used, to detele
 void Manipulation::goWait()
 {
     getCurrentState();
@@ -293,7 +186,7 @@ void Manipulation::goWait()
     move(joint_group_positions);
 }
 
-
+// Not used, to detele
 void Manipulation::goTemp()
 {
     getCurrentState();
@@ -302,6 +195,7 @@ void Manipulation::goTemp()
     move(joint_group_positions);
 }
 
+// Not used, to detele
 void Manipulation::goSnapshotPostion()
 {
     getCurrentState();
@@ -330,25 +224,20 @@ tf::StampedTransform Manipulation::getTransform(
   return T_target_source;
 }
 
-
-// Get the best prediction from anygrasp
 void Manipulation::reach_anygrasp()
 {
-
   tf::StampedTransform T_base_grasp;
   T_base_grasp = getTransform(grasp_listener, BASE_LINK_NAME, GRASP_LINK_NAME);
   geometry_msgs::Vector3 grasp_pose;
   tf::Matrix3x3 rotation_y;
-  rotation_y.setRPY(0, M_PI / 2.0 - 0.02, 0); // Rotate 90 degrees about the y-axis
+  rotation_y.setRPY(0, M_PI / 2.0 - 0.02, 0); 
   tf::Matrix3x3 rotation_z;
-  rotation_z.setRPY(0, 0,  - M_PI / 2.0 + 0.02); // Rotate -90 degrees about the z-axis
+  rotation_z.setRPY(0, 0,  - M_PI / 2.0 + 0.02);
   tf::Matrix3x3 grasp_orientation = T_base_grasp.getBasis();
   grasp_orientation = grasp_orientation * rotation_y * rotation_z;
   grasp_orientation.getRPY(grasp_pose.x, grasp_pose.y, grasp_pose.z);
 
-
-
-  tf::Vector3 translation_offset(0, 0, 0.01);  // offset about z-axis
+  tf::Vector3 translation_offset(0, 0, 0.01);
   tf::Vector3 grasp_translation(T_base_grasp.getOrigin().x(),
                                  T_base_grasp.getOrigin().y(),
                                  T_base_grasp.getOrigin().z());
@@ -370,17 +259,13 @@ void Manipulation::reach_anygrasp()
   std::cout << grasp_pose.y*57.3 << std::endl;
   std::cout << grasp_pose.z*57.3 << std::endl;
 
-
   set_target_pose();
   plan_pose_goal();
   this->move_group_ptr->move();
   ros::Duration(2.0).sleep();
 
   close_gripper();
-
 }
-
-
 
 void Manipulation::reach_handle()
 {
@@ -400,7 +285,7 @@ void Manipulation::reach_handle()
   grasp_pose.z = 89.274/57.3;
 
   tf::Matrix3x3 rotation_y;
-  rotation_y.setRPY(0, M_PI / 2.0, 0); // Rotate 90 degrees about the y-axis
+  rotation_y.setRPY(0, M_PI / 2.0, 0);
   std::cout << "Rotation Matrix: 90 deg about y" << std::endl;
   for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
@@ -410,7 +295,7 @@ void Manipulation::reach_handle()
   }
 
   tf::Matrix3x3 rotation_z;
-  rotation_z.setRPY(0, 0, - M_PI / 2.0); // Rotate -90 degrees about the z-axis
+  rotation_z.setRPY(0, 0, - M_PI / 2.0);
   std::cout << "Rotation Matrix: - 90 deg about z" << std::endl;
   for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
@@ -465,7 +350,6 @@ void Manipulation::reach_handle()
   ros::Duration(2.0).sleep();
 }
 
-
 void Manipulation::reach_food_item()
 {  
 
@@ -476,7 +360,6 @@ void Manipulation::reach_food_item()
   tf::StampedTransform T_base_grasp;
   T_base_grasp = getTransform(grasp_listener, BASE_LINK_NAME, GRASP_LINK_NAME);
   
-  // set grasp orientation
   geometry_msgs::Vector3 grasp_pose;
   grasp_pose.x = 176.594/57.3;
   grasp_pose.y = -0.278729/57.3; 
@@ -487,7 +370,6 @@ void Manipulation::reach_food_item()
                                  T_base_grasp.getOrigin().y(),
                                  T_base_grasp.getOrigin().z());
 
-  // reach pre-grasp pose
   this->orientation = grasp_pose;
   this->position.x = T_base_grasp.getOrigin().x() - 0.027;
   this->position.y = T_base_grasp.getOrigin().y();  
@@ -506,14 +388,12 @@ void Manipulation::reach_food_item()
   this->move_group_ptr->move();
   // ros::Duration(1.0).sleep();
 
-  // reach grasp pose
   this->position.z = T_base_grasp.getOrigin().z() + 0.17; 
   set_target_pose();
   plan_pose_goal();
   this->move_group_ptr->move();
   // ros::Duration(1.0).sleep();
 
-  // reach pre-grasp pose
   this->position.z = T_base_grasp.getOrigin().z() + 0.08 + 0.17; 
   set_target_pose();
   plan_pose_goal();
@@ -547,13 +427,6 @@ void Manipulation::reach_food_item()
   ros::Duration(2.0);
 
   bite_transfer();
-
-}
-
-void Manipulation::bite_transfer_replay()
-{
-  std::string bite_transfer_waypoints = "/home/zing/mealAssistiveRobot/sla_ws/src/object_grasping/data/trajectory_waypoints.txt";
-  trajectory_replay(bite_transfer_waypoints);
 }
 
 // Set objects for collision detection: 
@@ -563,25 +436,21 @@ void Manipulation::set_objects()
     collision_objects.resize(1);
 
     collision_objects[0].id = "object";
-    collision_objects[0].header.frame_id = "base_link"; //world for NERVE workstation
+    collision_objects[0].header.frame_id = "base_link";
 
-    // Define the primitive and its dimensions
     collision_objects[0].primitives.resize(1);
     collision_objects[0].primitives[0].type = collision_objects[0].primitives[0].CYLINDER;
     collision_objects[0].primitives[0].dimensions.resize(3);
-    collision_objects[0].primitives[0].dimensions[0] = 0.01; // height
-    collision_objects[0].primitives[0].dimensions[1] = 0.01; // radius
+    collision_objects[0].primitives[0].dimensions[0] = 0.01;
+    collision_objects[0].primitives[0].dimensions[1] = 0.01;
 
-    // Define the pose of the object
     collision_objects[0].primitive_poses.resize(1);
     collision_objects[0].primitive_poses[0].position.x = this->pose.x;
     collision_objects[0].primitive_poses[0].position.y = this->pose.y;
     collision_objects[0].primitive_poses[0].position.z = this->pose.z;
-    //collision_objects[0].operation = collision_objects[0].ADD;
 
-    // Define the primitive and its dimensions.
     collision_objects[0].id = "table";
-    collision_objects[0].header.frame_id = "base_link"; // world for NERVE workstation
+    collision_objects[0].header.frame_id = "base_link";
     collision_objects[0].primitives.resize(1);
     collision_objects[0].primitives[0].type = collision_objects[0].primitives[0].BOX;
     collision_objects[0].primitives[0].dimensions.resize(3);
@@ -589,7 +458,6 @@ void Manipulation::set_objects()
     collision_objects[0].primitives[0].dimensions[1] = 1;
     collision_objects[0].primitives[0].dimensions[2] = 0;
 
-    // Define the pose of the table.
     collision_objects[0].primitive_poses.resize(1);
     collision_objects[0].primitive_poses[0].position.x = 0.4;
     collision_objects[0].primitive_poses[0].position.y = 0;
@@ -600,7 +468,6 @@ void Manipulation::set_objects()
     this->planning_scene_ptr->applyCollisionObjects(collision_objects);
 }
 
-// Remove objects from collision detection: 
 void Manipulation::remove_objects()
 {
     std::vector<std::string> object_ids;
@@ -610,8 +477,7 @@ void Manipulation::remove_objects()
 }
 
 
-// Gripper Action Commands, TODO: replace with gripper planning group! 
-
+// Gripper Action Commands, TODO: replace with gripper planning group
 void Manipulation::close_gripper()
 {
     this->gripper_cmd.goal.command.position = 0.8;
@@ -627,7 +493,7 @@ void Manipulation::open_gripper()
 }
 
 
-// Working Gripper Commands for the pick() pipeline, not currently used
+//not currently used
 /*
 void Manipulation::closedGripper(trajectory_msgs::JointTrajectory &posture)
 {
@@ -654,7 +520,6 @@ void Manipulation::closedGripper(trajectory_msgs::JointTrajectory &posture)
 
 void Manipulation::openGripper(trajectory_msgs::JointTrajectory &posture)
 {
-
     posture.joint_names.resize(6);
     posture.joint_names[0] = "left_inner_finger_joint";
     posture.joint_names[1] = "right_inner_knuckle_joint";

@@ -1,7 +1,3 @@
-/*****************************************************************
-  Unit Test to make sure perception code & filters are working
-*****************************************************************/
-
 #include "manipulation_class.hpp"
 #include "perception_class.hpp"
 
