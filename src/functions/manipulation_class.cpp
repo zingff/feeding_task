@@ -14,11 +14,13 @@ typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
 Manipulation::Manipulation(ros::NodeHandle nodeHandle, std::string planning_group)
 {
     PLANNING_GROUP = planning_group;
+    // grasp_config = nodeHandle.subscribe("/detect_grasps/clustered_grasps", 1, &Manipulation::callback, this); // Subscribe to GPD output
     this->gripper_command = nodeHandle.advertise<control_msgs::GripperCommandActionGoal>("robotiq_2f_85_gripper_controller/gripper_cmd/goal", 10);
     // grasps_visualization_pub_ = nodeHandle.advertise<geometry_msgs::PoseArray>("grasps_visualization", 10);
     grasps_visualization_pub_ = nodeHandle.advertise<visualization_msgs::Marker>("grasps_visualization", 10);
 
 }
+
 
 // Get robot state and move to specified joint_group_position: 
 void Manipulation::getCurrentState()
