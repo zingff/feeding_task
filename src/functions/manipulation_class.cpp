@@ -75,69 +75,69 @@ void Manipulation::get_utensil()
     goTop();
 }
 
-// Not used, to detele
-void Manipulation::trajectory_replay(std::string waypoint_path)
-{
-    std::ifstream infile(waypoint_path);
-    std::string line;
-    std::vector<trajectory_msgs::JointTrajectoryPoint> waypoints;
-    while (std::getline(infile, line))
-    {
-        std::istringstream iss(line);
-        trajectory_msgs::JointTrajectoryPoint replay_point;
-        double value;
-        while (iss >> value)
-        {
-            replay_point.positions.push_back(value);
-        }
-        waypoints.push_back(replay_point);
-    }
-    infile.close();
+// // Not used, to detele
+// void Manipulation::trajectory_replay(std::string waypoint_path)
+// {
+//     std::ifstream infile(waypoint_path);
+//     std::string line;
+//     std::vector<trajectory_msgs::JointTrajectoryPoint> waypoints;
+//     while (std::getline(infile, line))
+//     {
+//         std::istringstream iss(line);
+//         trajectory_msgs::JointTrajectoryPoint replay_point;
+//         double value;
+//         while (iss >> value)
+//         {
+//             replay_point.positions.push_back(value);
+//         }
+//         waypoints.push_back(replay_point);
+//     }
+//     infile.close();
 
-    robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
-    const robot_model::RobotModelPtr &robot_model = robot_model_loader.getModel();
+//     robot_model_loader::RobotModelLoader robot_model_loader("robot_description");
+//     const robot_model::RobotModelPtr &robot_model = robot_model_loader.getModel();
 
-    for (auto &waypoint : waypoints)
-    {
-        for (size_t j = 0; j < waypoint.positions.size(); ++j)
-        {
-            const std::string &joint_name = move_group_ptr->getJointNames()[j];
-            const robot_model::JointModel *joint_model = robot_model->getJointModel(joint_name);
-            double joint_min = joint_model->getVariableBounds(joint_name).min_position_;
-            double joint_max = joint_model->getVariableBounds(joint_name).max_position_;
-            waypoint.positions[j] = std::max(joint_min, std::min(joint_max, waypoint.positions[j]));
-        }
-    }
+//     for (auto &waypoint : waypoints)
+//     {
+//         for (size_t j = 0; j < waypoint.positions.size(); ++j)
+//         {
+//             const std::string &joint_name = move_group_ptr->getJointNames()[j];
+//             const robot_model::JointModel *joint_model = robot_model->getJointModel(joint_name);
+//             double joint_min = joint_model->getVariableBounds(joint_name).min_position_;
+//             double joint_max = joint_model->getVariableBounds(joint_name).max_position_;
+//             waypoint.positions[j] = std::max(joint_min, std::min(joint_max, waypoint.positions[j]));
+//         }
+//     }
 
-    trajectory_msgs::JointTrajectory trajectory;
-    trajectory.joint_names = move_group_ptr->getJointNames();
+//     trajectory_msgs::JointTrajectory trajectory;
+//     trajectory.joint_names = move_group_ptr->getJointNames();
 
-    double max_speed = 0.8;
-    trajectory_msgs::JointTrajectoryPoint modified_first_waypoint = waypoints.front();
-    trajectory_msgs::JointTrajectoryPoint modified_last_waypoint = waypoints.back();
+//     double max_speed = 0.8;
+//     trajectory_msgs::JointTrajectoryPoint modified_first_waypoint = waypoints.front();
+//     trajectory_msgs::JointTrajectoryPoint modified_last_waypoint = waypoints.back();
 
-    modified_first_waypoint.time_from_start = ros::Duration(1.0); 
-    modified_last_waypoint.time_from_start = ros::Duration(1.0);
+//     modified_first_waypoint.time_from_start = ros::Duration(1.0); 
+//     modified_last_waypoint.time_from_start = ros::Duration(1.0);
 
-    trajectory.points.push_back(modified_first_waypoint);
+//     trajectory.points.push_back(modified_first_waypoint);
 
-    for (const auto &waypoint : waypoints)
-    {
-        trajectory_msgs::JointTrajectoryPoint traj_point;
-        traj_point.positions = waypoint.positions;
-        traj_point.time_from_start = ros::Duration(1.0);
-        trajectory.points.push_back(traj_point);
-    }
+//     for (const auto &waypoint : waypoints)
+//     {
+//         trajectory_msgs::JointTrajectoryPoint traj_point;
+//         traj_point.positions = waypoint.positions;
+//         traj_point.time_from_start = ros::Duration(1.0);
+//         trajectory.points.push_back(traj_point);
+//     }
 
-    trajectory.points.push_back(modified_last_waypoint);
+//     trajectory.points.push_back(modified_last_waypoint);
 
-    TrajectoryClient client("/my_gen3/gen3_joint_trajectory_controller/follow_joint_trajectory", true);
-    client.waitForServer();
-    control_msgs::FollowJointTrajectoryGoal goal;
-    goal.trajectory = trajectory;
-    client.sendGoal(goal);
-    client.waitForResult();
-}
+//     TrajectoryClient client("/my_gen3/gen3_joint_trajectory_controller/follow_joint_trajectory", true);
+//     client.waitForServer();
+//     control_msgs::FollowJointTrajectoryGoal goal;
+//     goal.trajectory = trajectory;
+//     client.sendGoal(goal);
+//     client.waitForResult();
+// }
 
 void Manipulation::goTop()
 {

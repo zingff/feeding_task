@@ -63,3 +63,11 @@ add_executable(get_utensil
 )
 target_link_libraries(get_utensil ${catkin_LIBRARIES})
 add_dependencies(get_utensil ${catkin_EXPORTED_TARGETS})
+
+add_executable(bite_transfer
+	src/nodes/bite_transfer.cpp
+	src/functions/manipulation_class.cpp
+  src/functions/feeding_task.cpp
+)
+target_link_libraries(bite_transfer ${catkin_LIBRARIES})
+add_dependencies(bite_transfer ${catkin_EXPORTED_TARGETS})

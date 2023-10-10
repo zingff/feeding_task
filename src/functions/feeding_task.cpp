@@ -123,6 +123,8 @@ void Manipulation::bite_transfer()
   this->target_pose.orientation.z = -0.604751;
   this->target_pose.orientation.w = 0.489433;
 
+// [ 0.3872724, -0.4914169, -0.604657, 0.4928685 ] zxy2quaternion
+
   this->target_pose.position.x = -0.0155496;
   this->target_pose.position.y = 0.265189;
   this->target_pose.position.z = 0.553932;
