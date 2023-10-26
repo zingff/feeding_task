@@ -14,7 +14,6 @@ int main(int argc, char **argv)
   std::string planning_group = "arm"; // Gen3 planning group
   Manipulation manipulation(nh, planning_group);
 
-
   // Manipulation variables/setup
   manipulation.planning_scene_ptr = PlanningScenePtr(
       new moveit::planning_interface::PlanningSceneInterface());
@@ -30,7 +29,7 @@ int main(int argc, char **argv)
   
   manipulation.reach_food_item();
   ros::Duration(2).sleep();
-  manipulation.goTop();
+  // manipulation.goTop();
 
   // ros::waitForShutdown();
   ros::shutdown();

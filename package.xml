@@ -17,6 +17,13 @@
   <build_depend>moveit_visual_tools</build_depend>
   <build_depend>moveit_ros_planning_interface</build_depend>
   <build_depend>control_msgs</build_depend>
+  <build_depend>kortex_motion_planning</build_depend>
+  <depend>tesseract_command_language</depend>
+  <depend>tesseract_monitoring</depend>
+  <depend>tesseract_support</depend>
+  <depend>tesseract_urdf</depend>
+  <depend>tesseract_kinematics</depend>
+
 
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>sensor_msgs</build_export_depend>
@@ -24,6 +31,9 @@
   <build_export_depend>moveit_core</build_export_depend>
   <build_export_depend>moveit_visual_tools</build_export_depend>
   <build_export_depend>moveit_ros_planning_interface</build_export_depend>
+
+
+
 
   <exec_depend>libpcl-all</exec_depend>
   <exec_depend>roscpp</exec_depend>

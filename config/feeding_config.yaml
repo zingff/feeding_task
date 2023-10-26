@@ -1,0 +1,17 @@
+# Robot configuration
+namedConfigs:
+  homeConfiguration: [4.1324e-06, 0.261901, 3.14137, 4.01393, 1.22496e-05, 0.959814, 1.57068]
+feedingConfigs:
+  doorOpenning:
+    initialConfiguration: [0, 0, 0, 0, 0, 0, 0]
+    postConfiguration: [0, 0, 0, 0, 0, 0, 0]
+  bowlFetching:
+    placementPose: [0, 0, 0, 0, 0, 0, 0]
+  utensilFetching:
+    utensilConfiguration: [0, 0, 0, 0, 0, 0, 0]
+  foodAcquisition:
+    initialConfiguration: [0.319602, -0.22124, 3.1419, -2.22188, 0.0315863, -0.74888, 1.56028]
+    skewerVerticalOrientation: [3.08192, -0.00486, 1.58491]
+  foodTransfer:
+    feedingPose: [-0.15135, 0.235484, 0.557796, 0.3872724, -0.4914169, -0.604657, 0.4928685]
+  

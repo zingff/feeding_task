@@ -146,8 +146,9 @@ void Manipulation::goTop()
     // setJointGroup(0.043, -0.1824, -0.0133, 2.208, -0.0188, 0.7828, -1.524);  // original
     // this config is closer to Home
     // setJointGroup(0, 6.12427-6.28, 3.15113, 3.9903-6.28, 0.0248641, 5.68259-6.28, 1.58098);  // normal, for pickup
-    setJointGroup(6.26513, 0.179158, 3.20562, 4.66534-6.28, 0.036471, 5.01553-6.28, 1.57978);  // vertical, for pickup
+    // setJointGroup(6.26513, 0.179158, 3.20562, 4.66534-6.28, 0.036471, 5.01553-6.28, 1.57978);  // vertical, for pickup
     // setJointGroup(0.319602, 6.05876-6.28, 3.1419, 4.05812-6.28, 0.0315863, 5.53112-6.28, 1.56028);  // a little tilt, for feeding
+    setJointGroup(0.0212474, 6.01921-6.28, 3.15111, 4.13476-6.28, 0.0608379, 5.37321-6.28, 1.58046);  // a little tilt, for feeding new 20231019
     
     move(joint_group_positions);
 }
@@ -213,14 +214,14 @@ tf::StampedTransform Manipulation::getTransform(
   ros::Time now = ros::Time(0);
   listener.waitForTransform(target_frame, source_frame, now, ros::Duration(18.0));
   listener.lookupTransform(target_frame, source_frame, now, T_target_source);
-  std::cout << "Transform from '" << source_frame << "' to '" << target_frame << "':" << std::endl;
-  std::cout << "Translation: (x=" << T_target_source.getOrigin().x()
-            << ", y=" << T_target_source.getOrigin().y()
-            << ", z=" << T_target_source.getOrigin().z() << ")" << std::endl;
-  std::cout << "Rotation: (x=" << T_target_source.getRotation().x()
-            << ", y=" << T_target_source.getRotation().y()
-            << ", z=" << T_target_source.getRotation().z()
-            << ", w=" << T_target_source.getRotation().w() << ")" << std::endl;
+  // std::cout << "Transform from '" << source_frame << "' to '" << target_frame << "':" << std::endl;
+  // std::cout << "Translation: (x=" << T_target_source.getOrigin().x()
+  //           << ", y=" << T_target_source.getOrigin().y()
+  //           << ", z=" << T_target_source.getOrigin().z() << ")" << std::endl;
+  // std::cout << "Rotation: (x=" << T_target_source.getRotation().x()
+  //           << ", y=" << T_target_source.getRotation().y()
+  //           << ", z=" << T_target_source.getRotation().z()
+  //           << ", w=" << T_target_source.getRotation().w() << ")" << std::endl;
   return T_target_source;
 }
 
@@ -352,81 +353,83 @@ void Manipulation::reach_handle()
 
 void Manipulation::reach_food_item()
 {  
-
-  // setJointGroup(0.043, -0.1824, -0.0133, 2.208, -0.0188, 0.7828, -1.524);
   move(joint_group_positions);
   ros::Duration(2.0).sleep();
 
-  tf::StampedTransform T_base_grasp;
-  T_base_grasp = getTransform(grasp_listener, BASE_LINK_NAME, GRASP_LINK_NAME);
-  
+  // grasp pose
+  tf::StampedTransform t_base_grasp;
+  t_base_grasp = getTransform(grasp_listener, BASE_LINK_NAME, GRASP_LINK_NAME);
+  tf::Transform T_base_grasp;
+  tf::Vector3 p_base_grasp(t_base_grasp.getOrigin());
+  // TODO: remove the following tf line
+  tf::Quaternion q_base_grasp(0.7071068, 0.7071068, 0, 0);  // addtional tf from anygrasp to kinova tool frame
+  T_base_grasp.setRotation(q_base_grasp);
+  T_base_grasp.setOrigin(p_base_grasp);
+
+  tf::Matrix3x3 q_base_tool(t_base_grasp.getBasis());
+  q_base_tool = q_base_tool; 
+
+  // grasp orientation, vertical
   geometry_msgs::Vector3 grasp_pose;
-  grasp_pose.x = 176.594/57.3;
-  grasp_pose.y = -0.278729/57.3; 
-  grasp_pose.z = 90.8153/57.3;
-  std::cout << "x: " << grasp_pose.x << std::endl;
+  grasp_pose.x = 180/57.3;
+  grasp_pose.y = 0/57.3; 
+  grasp_pose.z = 90/57.3;
 
-  tf::Vector3 grasp_translation(T_base_grasp.getOrigin().x(),
-                                 T_base_grasp.getOrigin().y(),
-                                 T_base_grasp.getOrigin().z());
+  // T_tool_grasp
+  tf::Transform T_tool_grasp;
+  T_tool_grasp.setIdentity();
+  tf::Vector3 p_tool_grasp(0.0, -0.005, 0.175);
+  tf::Quaternion q_tool_grasp(0.00, 0.00, 0.00, 1.00);  // fixed
+  T_tool_grasp.setOrigin(p_tool_grasp);
+  T_tool_grasp.setRotation(q_tool_grasp);
 
+  // T_grasp_tool
+  tf::Transform T_grasp_tool;
+  T_grasp_tool = T_tool_grasp.inverse();
+  std::cout << "T_grasp_tool: " << std::endl;
+  std::cout << "Position: " << T_grasp_tool.getOrigin().getX() << ", " 
+                            << T_grasp_tool.getOrigin().getY() << ", "
+                            << T_grasp_tool.getOrigin().getZ() << std::endl;
+  std::cout << "Orientation: " << T_grasp_tool.getRotation() << std::endl;
+
+  // Determine EE (tool_frame) pose
+  tf::Transform T_base_tool;
+  T_base_tool = T_base_grasp * T_grasp_tool;
+  tf::Vector3 p_base_tool; //(0.0, 0.0, 0.175);
+  p_base_tool = T_base_grasp.getBasis() * p_tool_grasp + T_base_grasp.getOrigin();
+  std::cout << "p_base_tool: " << std::endl;
+  std::cout << "Position: " << p_base_tool.getX() << ", " 
+                            << p_base_tool.getY() << ", "
+                            << p_base_tool.getZ() << std::endl;
+
+  // pre-grasp
   this->orientation = grasp_pose;
-  this->position.x = T_base_grasp.getOrigin().x() - 0.027;
-  this->position.y = T_base_grasp.getOrigin().y();  
-  this->position.z = T_base_grasp.getOrigin().z() + 0.08 + 0.17; 
-
-  std::cout << grasp_translation.x() << std::endl;
-  std::cout << grasp_translation.y() << std::endl;
-  std::cout << grasp_translation.z() << std::endl;
-  
-  std::cout << grasp_pose.x*57.3 << std::endl;
-  std::cout << grasp_pose.y*57.3 << std::endl;
-  std::cout << grasp_pose.z*57.3 << std::endl;
-
+  this->position.x = T_base_tool.getOrigin().x();
+  this->position.y = T_base_tool.getOrigin().y();
+  this->position.z = T_base_tool.getOrigin().z() + 0.08;
   set_target_pose();
   plan_pose_goal();
   this->move_group_ptr->move();
-  // ros::Duration(1.0).sleep();
 
-  this->position.z = T_base_grasp.getOrigin().z() + 0.17; 
-  set_target_pose();
-  plan_pose_goal();
-  this->move_group_ptr->move();
-  // ros::Duration(1.0).sleep();
-
-  this->position.z = T_base_grasp.getOrigin().z() + 0.08 + 0.17; 
-  set_target_pose();
-  plan_pose_goal();
-  this->move_group_ptr->move();
+  std::cout << "Grasp pose: " << std::endl;
+  std::cout << "Position: " << T_base_tool.getOrigin().getX() << ", " 
+                            << T_base_tool.getOrigin().getY() << ", "
+                            << T_base_tool.getOrigin().getZ() << std::endl;
+  std::cout << "Orientation: " << grasp_pose << std::endl;
   ros::Duration(1.0).sleep();  
 
-  // // feeding
-  // ROS_WARN("Feeding!");
-  // // grasp_pose.x = -73.6589/57.3;
-  // // grasp_pose.y = -179.238/57.3; 
-  // // grasp_pose.z = 85.8695/57.3;
+  // pre-grasp
+  this->orientation = grasp_pose;
+  this->position.x = T_base_tool.getOrigin().x();
+  this->position.y = T_base_tool.getOrigin().y();
+  this->position.z = T_base_tool.getOrigin().z();
+  set_target_pose();
+  plan_pose_goal();
+  this->move_group_ptr->move();
+  ros::Duration(1).sleep();
 
-  // grasp_pose.x = -104.242/57.3;
-  // grasp_pose.y = -175.607/57.3; 
-  // grasp_pose.z = 85.9316/57.3;
+  goTop();
 
-  // this->orientation = grasp_pose;
-  // // this->position.x = -0.0714748;
-  // // this->position.y = 0.276489;  
-  // // this->position.z = 0.648815;
-
-  // this->position.x = -0.0204952;
-  // this->position.y = 0.302304;  
-  // this->position.z = 0.626752;
-  // set_target_pose();
-  // plan_pose_goal();
-  // // ompl_plan();
-  // this->move_group_ptr->move();
-  setJointGroup(0.318251, 6.06139-6.28, 3.13404, 4.06107-6.28, 0.0316907, 6.10643-6.28, 1.55993);
-  move(joint_group_positions);
-  ros::Duration(2.0);
-
-  bite_transfer();
 }
 
 // Set objects for collision detection: 

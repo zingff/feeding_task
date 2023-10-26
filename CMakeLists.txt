@@ -11,6 +11,9 @@ if(NOT EIGEN3_INCLUDE_DIRS)
   set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 endif()
 
+SET(KORTEX_CONFIG_DIR "${PROJECT_SOURCE_DIR}/../kortex_motion_planning/config")
+add_definitions(-DKORTEX_CONFIG_DIR="${KORTEX_CONFIG_DIR}")
+
 find_package(catkin REQUIRED COMPONENTS
   interactive_markers
   geometry_msgs
@@ -31,7 +34,17 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
   control_msgs
   anygrasp_generation
+  kortex_motion_planning
+  tesseract_monitoring
+  tesseract_rosutils
+  
 )
+
+find_package(tesseract_command_language REQUIRED)
+find_package(tesseract_task_composer REQUIRED)
+find_package(tesseract_kinematics REQUIRED)
+
+find_package(descartes_light REQUIRED)
 
 catkin_package(
 )
@@ -47,6 +60,41 @@ add_executable(reach_food_item
 )
 target_link_libraries(reach_food_item ${catkin_LIBRARIES})
 add_dependencies(reach_food_item ${catkin_EXPORTED_TARGETS})
+
+# ???????
+link_directories(/home/zing/mealAssistiveRobot/sla_ws/devel/lib)
+add_executable(reach_food_item_loop
+	src/nodes/food_item_fetch_loop.cpp
+	src/functions/manipulation_class.cpp
+  src/functions/feeding_task.cpp
+)
+target_link_libraries(reach_food_item_loop 
+    ${catkin_LIBRARIES}
+    kortex_motion_planning
+)
+target_link_libraries(reach_food_item_loop
+  ${catkin_LIBRARIES}
+  tesseract::tesseract_environment
+  tesseract::tesseract_command_language
+  tesseract::tesseract_task_composer
+  tesseract::tesseract_motion_planners_core
+  tesseract::tesseract_motion_planners_simple
+  tesseract::tesseract_motion_planners_ompl
+  tesseract::tesseract_motion_planners_trajopt
+  tesseract::tesseract_motion_planners_descartes
+  tesseract::tesseract_time_parameterization_isp
+  )
+add_dependencies(reach_food_item_loop 
+    ${catkin_EXPORTED_TARGETS}
+)
+
+add_executable(initial
+	src/nodes/food_item_fetch.cpp
+	src/functions/manipulation_class.cpp
+  src/functions/feeding_task.cpp
+)
+target_link_libraries(initial ${catkin_LIBRARIES})
+add_dependencies(initial ${catkin_EXPORTED_TARGETS})
 
 add_executable(bowl_handle_grasp
 	src/nodes/door_handle_grasp.cpp

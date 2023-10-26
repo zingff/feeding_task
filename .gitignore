@@ -1,1 +1,6 @@
 data/
+config/feeding_config_ref.yaml
+launch/param.launch
+src/nodes/initial.cpp
+src/nodes/ompl_test.cpp
+src/nodes/perception_test.cpp
