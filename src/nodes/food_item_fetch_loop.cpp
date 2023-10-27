@@ -13,6 +13,7 @@ int main(int argc, char **argv)
   spinner.start();
   ros::Duration(1.0).sleep();
 
+  // todo: remove namespace of /my_gen3
   // std::string planning_group = "arm"; // Gen3 planning group
   // Manipulation manipulation(nh, planning_group);
   
