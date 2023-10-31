@@ -45,7 +45,7 @@ private:
   // Move arm functions:
   void setJointGroup(double j0, double j1, double j2,
                      double j3, double j4, double j5, double j6);
-  void getCurrentState();
+
   void move(std::vector<double>);
 
   tf::TransformListener grasp_listener;
@@ -67,6 +67,8 @@ public:
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
   MoveGroupPtr move_group_ptr;
   moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+  // todo: move to private
+  void getCurrentState();
 
   // Hard coded arm goTo functions
   void goTop();

@@ -13,14 +13,17 @@
   <arg name="verbose" default="false"/>
 
   <!-- Load universal robot description format (URDF) -->
-  <param name="$(arg robot_description)" command="$(find xacro)/xacro --inorder '$(find kortex_description)/robots/urdf/gen3_robotiq_2f_85_tesseract.xacro'" />
+  <param name="$(arg trajopt_description)" command="$(find xacro)/xacro --inorder '$(find kortex_description)/robots/urdf/gen3_robotiq_2f_85_tesseract.xacro'" />
 
   <!-- The semantic description that corresponds to the URDF -->
-  <param name="$(arg robot_description)_semantic" textfile="$(find kortex_description)/robots/urdf/gen3_robotiq_2f_85_tesseract.srdf" />
+  <param name="$(arg trajopt_description)_semantic" textfile="$(find kortex_description)/robots/urdf/gen3_robotiq_2f_85_tesseract.srdf" />
 
-  <group unless="$(arg testing)">
+  <group  unless="$(arg testing)">
+  <!-- <group ns = "/my_gen3" unless="$(arg testing)"> -->
+
     <!-- If needed, broadcast static tf for robot root -->
     <!-- <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_0" args="0 0 0 0 0 0 world base_link 100" /> -->
+    <rosparam file="$(find feeding_task)/config/feeding_config.yaml" command="load" />
 
     <node pkg="feeding_task" type="reach_food_item_loop" name="reach_food_item_loop" output="screen">
       <param name="plotting" type="bool" value="$(arg plotting)"/>
@@ -30,6 +33,9 @@
       <param name="method_id" type="int" value = "$(arg method_id)"/>
       <param name="verbose" type="bool" value = "$(arg verbose)"/>
     </node>
+
+    <node pkg="anygrasp_generation" type="anygrasp_publisher.py" name="anygrasp_publisher" output="screen" required="true"/>
+
 
     <!-- Launch visualization -->
     <node if="$(arg rviz)" pkg="rviz" type="rviz" name="kortex_motion_planning_rviz"

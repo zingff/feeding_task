@@ -360,7 +360,22 @@ void Manipulation::reach_food_item()
   tf::StampedTransform t_base_grasp;
   t_base_grasp = getTransform(grasp_listener, BASE_LINK_NAME, GRASP_LINK_NAME);
   tf::Transform T_base_grasp;
-  tf::Vector3 p_base_grasp(t_base_grasp.getOrigin());
+  // tf::Vector3 p_base_grasp(t_base_grasp.getOrigin());
+  tf::Vector3 p_base_grasp;
+  double translation_x, translation_y, translation_z;
+  std::string grasp_namespace = "/reach_food_item_loop/anygrasp";
+  // /reach_food_item_loop/anygrasp/grasp_8/translation/z
+
+  std::string param_name = grasp_namespace + "/grasp_0";
+  ros::param::get(param_name + "/translation/x", translation_x);
+  ros::param::get(param_name + "/translation/y", translation_y);
+  ros::param::get(param_name + "/translation/z", translation_z);
+
+  p_base_grasp.setX(translation_x);
+  p_base_grasp.setY(translation_y);
+  p_base_grasp.setZ(translation_z);
+    
+      
   // TODO: remove the following tf line
   tf::Quaternion q_base_grasp(0.7071068, 0.7071068, 0, 0);  // addtional tf from anygrasp to kinova tool frame
   T_base_grasp.setRotation(q_base_grasp);

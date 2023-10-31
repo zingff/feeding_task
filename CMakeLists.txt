@@ -75,6 +75,9 @@ add_executable(reach_food_item_loop
 	src/nodes/food_item_fetch_loop.cpp
 	src/functions/manipulation_class.cpp
   src/functions/feeding_task.cpp
+  src/functions/feeding_utilities.cpp
+  src/functions/anygrasp_publisher.cpp
+
 )
 target_link_libraries(reach_food_item_loop 
   ${catkin_LIBRARIES}
@@ -133,6 +136,17 @@ target_link_libraries(bite_transfer
 add_dependencies(bite_transfer 
   ${catkin_EXPORTED_TARGETS}
 )
+
+# # Anygrasp publisher
+# add_executable(anygrasp_publisher
+# 	src/functions/anygrasp_publisher.cpp
+# )
+# target_link_libraries(anygrasp_publisher 
+#   ${catkin_LIBRARIES}
+# )
+# add_dependencies(anygrasp_publisher 
+#   ${catkin_EXPORTED_TARGETS}
+# )
 
 ########## FOR TEST ##########
 # Move to initial position

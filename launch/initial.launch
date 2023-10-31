@@ -1,5 +1,5 @@
 <launch>
-    <group ns = "/my_gen3">
+    <group >
         <node pkg="feeding_task" name="initial" type="initial" output="screen" required="true"/>
 
     </group>
