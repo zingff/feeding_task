@@ -85,21 +85,17 @@ int main(int argc, char **argv)
     });
 
     anygrasp_thread.join();
-        std::cout << "3" << std::endl;
     reach_food_thread.join();
-        std::cout << "4" << std::endl;
 
 
     // ros::Duration(0.5).sleep();
 
     // todo: remove everything about ns !!!!!!!!
     trajectory_msgs::JointTrajectoryPoint joint_state = gen3_motion_executor.getJointState();
-    std::cout << "1" << std::endl;
     for (size_t i = 0; i < 7; i++)
     {
       current_joint_position(i) = joint_state.positions[i];
     }
-    std::cout << "2" << std::endl;
     trajectory_msgs::JointTrajectory motion_plan;
     motion_plan = gen3_motion_planner.createGen3MotionPlan(
       urdf_xml_string,
