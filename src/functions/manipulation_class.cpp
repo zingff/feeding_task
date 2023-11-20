@@ -363,6 +363,7 @@ void Manipulation::reach_food_item()
   // tf::Vector3 p_base_grasp(t_base_grasp.getOrigin());
   tf::Vector3 p_base_grasp;
   double translation_x, translation_y, translation_z;
+  double rotation_x, rotation_y, rotation_z, rotation_w;
   std::string grasp_namespace = "/reach_food_item_loop/anygrasp";
   // /reach_food_item_loop/anygrasp/grasp_8/translation/z
 
@@ -370,6 +371,12 @@ void Manipulation::reach_food_item()
   ros::param::get(param_name + "/translation/x", translation_x);
   ros::param::get(param_name + "/translation/y", translation_y);
   ros::param::get(param_name + "/translation/z", translation_z);
+  ros::param::get(param_name + "/rotation/x", rotation_x);
+  ros::param::get(param_name + "/rotation/y", rotation_y);
+  ros::param::get(param_name + "/rotation/z", rotation_z);
+  ros::param::get(param_name + "/rotation/w", rotation_w);
+
+
 
   p_base_grasp.setX(translation_x);
   p_base_grasp.setY(translation_y);
@@ -378,6 +385,7 @@ void Manipulation::reach_food_item()
       
   // TODO: remove the following tf line
   tf::Quaternion q_base_grasp(0.7071068, 0.7071068, 0, 0);  // addtional tf from anygrasp to kinova tool frame
+
   T_base_grasp.setRotation(q_base_grasp);
   T_base_grasp.setOrigin(p_base_grasp);
 
@@ -393,7 +401,7 @@ void Manipulation::reach_food_item()
   // T_tool_grasp
   tf::Transform T_tool_grasp;
   T_tool_grasp.setIdentity();
-  tf::Vector3 p_tool_grasp(0.0, -0.005, 0.175);
+  tf::Vector3 p_tool_grasp(0.0, 0.0, 0.175);
   tf::Quaternion q_tool_grasp(0.00, 0.00, 0.00, 1.00);  // fixed
   T_tool_grasp.setOrigin(p_tool_grasp);
   T_tool_grasp.setRotation(q_tool_grasp);

@@ -1,7 +1,7 @@
 <launch>
     <node pkg="anygrasp_generation" type="anygrasp_publisher.py" name="anygrasp_publisher" output="screen" required="true"/>
 
-    <group ns = "/my_gen3">
+    <group>
         <node pkg="feeding_task" name="reach_food_item" type="reach_food_item" output="screen" required="true"/>
 
     </group>

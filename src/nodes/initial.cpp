@@ -5,13 +5,14 @@
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "anygrasp_multiple_objects");
+  std::cout << " nimasile " << std::endl;
 
   ros::NodeHandle nh;
   ros::AsyncSpinner spinner(4);
   spinner.start();
   // ros::Duration(1.0).sleep();
 
-  std::string planning_group = "arm"; // Gen3 planning group
+  std::string planning_group = "manipulator"; // Gen3 planning group
   Manipulation manipulation(nh, planning_group);
 
 
