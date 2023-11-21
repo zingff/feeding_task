@@ -22,57 +22,68 @@ import kortex_motion_planning.srv
 from geometry_msgs.msg import Pose, Transform
 from trajectory_msgs.msg import JointTrajectory
 
-outcomes_sm = [  'motion_generator'
-               , 'grasp_generator'
-               , 'motion_executor'
-               , 'initial_motion_generator'
-               , 'succeeded','aborted','preempted'
+outcomes_sm = ['motion_generator'
+    , 'grasp_generator'
+    , 'motion_executor'
+    , 'initial_motion_generator'
+    , 'succeeded', 'aborted', 'preempted'
                ]
 
-input_keys_sm = [  'motion_plan'
-                 , 'success']
+input_keys_sm = ['ud_motion_plan'
+    , 'ud_success']
 
 transition_sm = {
     'motion_generator': 'motion_generator'
-  , 'grasp_generator': 'grasp_generator'
-  , 'motion_executor': 'motion_executor'
-  , 'initial_motion_generator': 'initial_motion_generator'
+    , 'grasp_generator': 'grasp_generator'
+    , 'motion_executor': 'motion_executor'
+    , 'initial_motion_generator': 'initial_motion_generator'
 }
 
+# from internal state machine to global variables
 remapping_sm = {
-    'motion_plan': 'motion_plan'
-  , 'success': 'success'
+    'ud_motion_plan': 'motion_plan'
+    , 'ud_success': 'success'
 }
+
 
 class CustomStateMachine(smach.StateMachine):
     def __init__(self, custom_outcomes, input_keys=[], output_keys=[]):
         super(CustomStateMachine, self).__init__(custom_outcomes, input_keys, output_keys)
 
+
 # Define states here
 def motion_generator_callback(userdata, response):
     if response.success:
+        rospy.loginfo("motion_generator: success")
+
         return 'motion_executor'
     else:
+        rospy.warn("motion_generator: failed")
         return 'motion_generator'
-      
+
+
 def motion_executor_callback(userdata, response):
     # if response.success:
     #     return 'wait'
     if response.success:
+        rospy.loginfo("motion_executor: success")
         return 'grasp_generator'
-      
+
+
 def grasp_generator_callback(userdata, response):
     # if response.success:
     #     return 'wait'
     if response.success:
+        rospy.loginfo("grasp_generator: success")
         return 'initial_motion_generator'
 
+
 class wait(smach.State):
-  def __init__(self):
-    smach.State.__init__(self, outcomes=outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
-  
-  def execute(self, ud):
-    rospy.sleep(10)
+    def __init__(self):
+        smach.State.__init__(self, outcomes=outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
+
+    def execute(self, ud):
+        rospy.sleep(10)
 
 
 class grasp_generator(smach_ros.ServiceState):
@@ -89,6 +100,7 @@ class grasp_generator(smach_ros.ServiceState):
             # response_cb=motion_generator_callback
         )
 
+
 class motion_generator(smach_ros.ServiceState):
     def __init__(self, target_pose_, input_keys_sm, outcomes_sm):
         super(motion_generator, self).__init__(
@@ -101,8 +113,7 @@ class motion_generator(smach_ros.ServiceState):
             output_keys=input_keys_sm,
             response_cb=motion_generator_callback
         )
-        
-        
+
 
 class motion_executor(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
@@ -117,8 +128,6 @@ class motion_executor(smach_ros.ServiceState):
             output_keys=input_keys_sm,
             response_cb=motion_executor_callback
         )
-        
-  
 
 
 def main():
@@ -127,17 +136,18 @@ def main():
     # Create a SMACH state machine
     # sm = StateMachine(outcomes=['succeeded','aborted','preempted'])
     # sm = smach.StateMachine(outcomes=[])
-    sm = CustomStateMachine(outcomes_sm, input_keys_sm, input_keys_sm)
-    
-    target_pose_ = Pose()
-    target_pose_.position.x = -0.15135
-    target_pose_.position.y = 0.235484
-    target_pose_.position.z = 0.557796
-    target_pose_.orientation.x = 0.3872724
-    target_pose_.orientation.y = -0.4914169
-    target_pose_.orientation.z = -0.604657
-    target_pose_.orientation.w = 0.4928685
-    
+    sm = CustomStateMachine(outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
+
+    # food_transfer
+    feeding_pose = Pose()
+    feeding_pose.position.x = -0.15135
+    feeding_pose.position.y = 0.235484
+    feeding_pose.position.z = 0.557796
+    feeding_pose.orientation.x = 0.3872724
+    feeding_pose.orientation.y = -0.4914169
+    feeding_pose.orientation.z = -0.604657
+    feeding_pose.orientation.w = 0.4928685
+
     target_pose_2 = Pose()
     target_pose_2.position.x = -0.15135
     target_pose_2.position.y = 0.235484
@@ -146,40 +156,48 @@ def main():
     target_pose_2.orientation.y = -0.4914169
     target_pose_2.orientation.z = -0.604657
     target_pose_2.orientation.w = 0.4928685
-    
+
     update_anygrasp = True
 
     sm.userdata.ud_motion_plan = JointTrajectory()
-    # sm0.userdata.ud_motion_plan = JointTrajectory()
     sm.userdata.ud_success = False
     sm.userdata.ud_message = ''
     sm.userdata.ud_anygrasp_transforms = []
-    
-    sm.userdata.success = False
-    sm.userdata.motion_plan = JointTrajectory()
-    success = False
-    motion_plan = JointTrajectory()
 
-     
+    # Remap variables
+    sm.userdata.ud_feeding_pose = feeding_pose
+    sm.userdata.ud_target_pose_2 = target_pose_2
+    sm.userdata.ud_update_anygrasp = update_anygrasp
 
     # Open the container
     with sm:
-      smach.StateMachine.add('motion_generator', motion_generator(target_pose_, input_keys_sm, outcomes_sm),
-                             transitions=transition_sm,
-                             remapping=remapping_sm)
-      smach.StateMachine.add('motion_executor', motion_executor('motion_plan', input_keys_sm, outcomes_sm),
-                        transitions=transition_sm,
-                        remapping=remapping_sm)
-      smach.StateMachine.add('grasp_generator', grasp_generator(update_anygrasp, input_keys_sm, outcomes_sm),
-                        transitions=transition_sm,
-                        remapping=remapping_sm)
-      smach.StateMachine.add('initial_motion_generator', motion_generator(target_pose_2, input_keys_sm, outcomes_sm),
-                             transitions=transition_sm,
-                             remapping=remapping_sm)
+        smach.StateMachine.add('motion_generator'
+                               , motion_generator(sm.userdata.ud_feeding_pose
+                                                  , input_keys_sm
+                                                  , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
+        smach.StateMachine.add('motion_executor'
+                               , motion_executor('ud_motion_plan'
+                                                 , input_keys_sm
+                                                 , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
+        smach.StateMachine.add('grasp_generator'
+                               , grasp_generator(sm.userdata.ud_update_anygrasp
+                                                 , input_keys_sm
+                                                 , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
+        smach.StateMachine.add('initial_motion_generator'
+                               , motion_generator(sm.userdata.ud_target_pose_2
+                                                  , input_keys_sm
+                                                  , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
 
     # sis = smach_ros.IntrospectionServer('feeding_smach_introspection_server', sm, '/Start')
     # sis.start()
-
 
     # Execute SMACH tree
     outcome = sm.execute()
@@ -188,6 +206,7 @@ def main():
     # rospy.signal_shutdown('All done.')
     # Wait for ctrl-C to stop the application
     rospy.spin()
+
 
 if __name__ == '__main__':
     main()
