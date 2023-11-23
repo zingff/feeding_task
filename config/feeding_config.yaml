@@ -14,4 +14,13 @@ feedingConfigs:
     skewerVerticalOrientation: [3.08192, -0.00486, 1.58491]
   foodTransfer:
     feedingPose: [-0.15135, 0.235484, 0.557796, 0.3872724, -0.4914169, -0.604657, 0.4928685]
-  
+
+# # initial pose for skewer
+# Current position (rad): 
+# 0.0212533, 6.02209, 3.15095, 4.13757, 0.0608627, 5.37585, 1.58045
+# Current position (deg): 
+# 1.21781, 345.066, 180.55, 237.083, 3.48743, 308.036, 90.5598
+# Current Cartesian pose of tool frame (ZYX): 
+# 0.285026, -0.0202379, 0.316972, 161.321, 3.56816, 90.4841
+# Current Cartesian pose of tool frame (Quaternion): 
+# 0.285026, -0.0202379, 0.316972, 0.690882, 0.703843, 0.093615, 0.136099

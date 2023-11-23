@@ -1,8 +1,15 @@
 #!/usr/bin/env python
 
-# This is a state machine demo for test
-# Deprecated: 20231122
+# Note: a finite state machine for feeding task
+# NOte: name of the manipulator: sausage lip arm (SLA)
 
+# TODO List:
+# * concurrent sm for collision detection
+    # . cd is not necessary in the whole task
+# * add a joint planner in kmp
+# * modify the skewer action in a cb in sm
+# * add a loop for skewer task
+ 
 from contextlib import nullcontext
 from urllib import response
 import anygrasp_generation
@@ -25,7 +32,7 @@ from trajectory_msgs.msg import JointTrajectory
 import tf2_ros
 
 outcomes_sm = ['motion_generator'
-    , 'grasp_generator'
+    , 'food_item_selector'
     , 'motion_executor'
     , 'initial_motion_generator'
     , 'succeeded'
@@ -51,7 +58,7 @@ input_keys_sm = ['motion_plan'
 
 transition_sm = {
       'motion_generator': 'motion_generator'
-    , 'grasp_generator': 'grasp_generator'
+    , 'food_item_selector': 'food_item_selector'
     , 'motion_executor': 'motion_executor'
     , 'initial_motion_generator': 'initial_motion_generator'
 }
@@ -89,16 +96,16 @@ def motion_executor_callback(userdata, response):
     #     return 'wait'
     if response.success:
         rospy.loginfo("motion_executor: success")
-        return 'grasp_generator'
+        return 'food_item_selector'
 
 
-def grasp_generator_callback(userdata, response):
+def food_item_selector_callback(userdata, response):
     if response.success:
-        rospy.loginfo("grasp_generator: success")
+        rospy.loginfo("food_item_selector: success")
         userdata.ud_success = True
         return 'initial_motion_generator'
     else:
-        rospy.logwarn("grasp_generator: failed")
+        rospy.logwarn("food_item_selector: failed")
         userdata.ud_success = False
         return 'failed'
 
@@ -111,9 +118,9 @@ class wait(smach.State):
         rospy.sleep(10)
 
 
-class grasp_generator(smach_ros.ServiceState):
+class food_item_selector(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
-        super(grasp_generator, self).__init__(
+        super(food_item_selector, self).__init__(
             service_name='/grasp_generator',
             service_spec=anygrasp_generation.srv.AnyGraspGeneration,
             # request=anygrasp_generation.srv.AnyGraspGenerationRequest(update_anygrasp),
@@ -122,7 +129,7 @@ class grasp_generator(smach_ros.ServiceState):
             outcomes=outcomes_sm,
             input_keys=input_keys_sm,
             output_keys=input_keys_sm,
-            response_cb=grasp_generator_callback
+            response_cb=food_item_selector_callback
             # response_cb=motion_generator_callback
         )
         self.anygrasp_tf_broadcaster = tf2_ros.TransformBroadcaster()
@@ -130,7 +137,7 @@ class grasp_generator(smach_ros.ServiceState):
 
     def execute(self, userdata):
         # Call parent execute (makes the service call)
-        outcome = super(grasp_generator, self).execute(userdata)
+        outcome = super(food_item_selector, self).execute(userdata)
 
         # Publish TF transforms if the service call was successful
         if userdata.success:
@@ -235,8 +242,8 @@ def main():
                                                  , outcomes_sm)
                                , transitions=transition_sm
                                , remapping=remapping_sm)
-        smach.StateMachine.add('grasp_generator'
-                               , grasp_generator('update_anygrasp'
+        smach.StateMachine.add('food_item_selector'
+                               , food_item_selector('update_anygrasp'
                                                  , input_keys_sm
                                                  , outcomes_sm)
                                , transitions=transition_sm
