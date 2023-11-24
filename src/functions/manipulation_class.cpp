@@ -566,3 +566,4 @@ void Manipulation::openGripper(trajectory_msgs::JointTrajectory &posture)
     posture.points[0].time_from_start = ros::Duration(0.5);
 }
 */
+

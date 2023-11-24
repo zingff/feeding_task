@@ -1,14 +1,5 @@
 #!/usr/bin/env python
 
-# Note: a finite state machine for feeding task
-# Note: name of the manipulator: sausage lip arm (SLA)
-
-# TODO List:
-# * concurrent sm for collision detection (cd is not always necessary)
-# . add a joint planner in kmp \/
-# * modify the skewer action in a cb in food item selector
-# * add a loop for skewer task
- 
 from contextlib import nullcontext
 from urllib import response
 import anygrasp_generation
@@ -41,7 +32,7 @@ outcomes_sm = ['motion_generator'
     , 'aborted'
     , 'preempted'
     , 'joint_motion_generator'
-    , 'plan_to_pre_skewer_pose'
+    , 'move_to_pre_skewer_pose'
     , 'move_to_feeding_initial_position'
                ]
 
@@ -55,8 +46,8 @@ input_keys_sm = ['motion_plan'
     , 'ud_success'
     , 'ud_anygrasp_transforms'
     , 'ud_anygrasp_transform'
-    # , 'anygrasp_transform'
-    , 'pre_skewer_pose'
+    , 'anygrasp_transform'
+    , 'ud_pre_skewer_pose'
     , 'pre_skewer_pose'
                  ]
 
@@ -67,7 +58,7 @@ transition_sm = {
     , 'motion_executor': 'motion_executor'
     , 'initial_motion_generator': 'initial_motion_generator'
     , 'joint_motion_generator' : 'joint_motion_generator'
-    , 'plan_to_pre_skewer_pose': 'plan_to_pre_skewer_pose'
+    , 'move_to_pre_skewer_pose': 'move_to_pre_skewer_pose'
     , 'move_to_feeding_initial_position' : 'move_to_feeding_initial_position'
 }
 
@@ -80,8 +71,7 @@ remapping_sm = {
     , 'anygrasp_transforms': 'ud_anygrasp_transforms'
     , 'success': 'ud_success'
     , 'anygrasp_transform': 'ud_anygrasp_transform'
-    # , 'pre_skewer_pose' : 'pre_skewer_pose'
-    , 'pre_skewer_pose': 'pre_skewer_pose'
+    , 'pre_skewer_pose' : 'ud_pre_skewer_pose'
 }
 
 def transform_to_matrix(transform):
@@ -188,7 +178,7 @@ def generic_userdata_state_callback(userdata, response, next_state_on_success, n
 def food_item_selector_callback(userdata, response):
     return generic_userdata_state_callback(userdata, 
                                            response, 
-                                           'plan_to_pre_skewer_pose', 
+                                           'move_to_pre_skewer_pose', 
                                            'aborted', 
                                            True)
 
@@ -213,53 +203,11 @@ def motion_generator_callback(userdata, response):
                                 'motion_executor',
                                 'motion_generator')
 
-def plan_to_pre_skewer_pose_callback(userdata, response):
-  rospy.loginfo("Received pre_skewer_pose in plan_to_pre_skewer_pose: %s", str(userdata.pre_skewer_pose))
+def move_to_pre_skewer_pose_callback(userdata, response):
   return generic_state_callback(userdata, 
                                 response, 
                                 'motion_executor',
-                                'plan_to_pre_skewer_pose')
-  
-  
-# def motion_generator_callback(userdata, response):
-#     if response.success:
-#         rospy.loginfo("motion_generator: success")
-
-#         return 'motion_executor'
-#     else:
-#         rospy.logwarn("motion_generator: failed")
-#         return 'motion_generator'
-   
-
-# def move_to_feeding_initial_position_callback(userdata, response):
-#     function_name = inspect.currentframe().f_code.co_name
-#     state_name = function_name.replace('_callback', '')
-
-#     if response.success:
-#         rospy.loginfo(f"{state_name}: success")
-#         return 'food_item_selector'
-#     else:
-#         rospy.logwarn(f"{state_name}: failed")
-#         return 'aborted'
-
-
-# def motion_executor_callback(userdata, response):
-#     # if response.success:
-#     #     return 'wait'
-#     if response.success:
-#         rospy.loginfo("motion_executor: success")
-#         return 'grasp_generator'
-
-
-# def food_item_selector_callback(userdata, response):
-#     if response.success:
-#         rospy.loginfo("food_item_selector: success")
-#         userdata.ud_success = True
-#         return 'initial_motion_generator'
-#     else:
-#         rospy.logwarn("food_item_selector: failed")
-#         userdata.ud_success = False
-#         return 'failed'
+                                'move_to_pre_skewer_pose')
 
 
 class wait(smach.State):
@@ -310,9 +258,6 @@ class food_item_selector(smach_ros.ServiceState):
             q_grasp.y = grasp_quaternion_tf[1]
             q_grasp.z = grasp_quaternion_tf[2]
             q_grasp.w = grasp_quaternion_tf[3]
-            # attributes = ['x', 'y', 'z', 'w']
-            # for attr, value in zip(attributes, grasp_quaternion_tf):
-            #     setattr(q_grasp, attr, value)
             
             # T_base_grasp
             T_base_grasp = Transform()
@@ -356,9 +301,9 @@ class food_item_selector(smach_ros.ServiceState):
             pre_skewer_pose.position.y = T_base_tool.translation.y
             pre_skewer_pose.position.z = T_base_tool.translation.z + 0.08
             pre_skewer_pose.orientation = q_grasp
-            userdata.pre_skewer_pose = pre_skewer_pose
+            userdata.ud_pre_skewer_pose = pre_skewer_pose
             print("pre_skewer_pose: ")
-            print(userdata.pre_skewer_pose) 
+            print(userdata.ud_pre_skewer_pose) 
             
             for i, transform in enumerate(userdata.ud_anygrasp_transforms):
                 anygrasp_tf_msg = tf2_ros.TransformStamped()
@@ -386,38 +331,19 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
         )
     
         
-# class plan_to_pre_skewer_pose(smach_ros.ServiceState):
-#     def __init__(self, target_pose_, input_keys_sm, outcomes_sm, userdata):
-#         super(plan_to_pre_skewer_pose, self).__init__(
-#             service_name='/motion_planning_server',
-#             service_spec=kortex_motion_planning.srv.GenerateKortexMotionPlan,
-#             request=kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose_),
-#             response_slots=['motion_plan', 'success', 'message'],
-#             outcomes=outcomes_sm,
-#             input_keys=input_keys_sm,
-#             output_keys=input_keys_sm,
-#             response_cb=plan_to_pre_skewer_pose_callback
-#         )
-
-class plan_to_pre_skewer_pose(smach_ros.ServiceState):
-    def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
-        smach_ros.ServiceState.__init__(
-            self,
-            service_name=service_name,
-            service_spec=service_spec,
-            request_cb=self.request_cb,
-            request_cb_args=[userdata_key],
+class move_to_pre_skewer_pose(smach_ros.ServiceState):
+    def __init__(self, target_pose_, input_keys_sm, outcomes_sm):
+        super(move_to_pre_skewer_pose, self).__init__(
+            service_name='/motion_planning_server',
+            service_spec=kortex_motion_planning.srv.GenerateKortexMotionPlan,
+            request=kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose_),
             response_slots=['motion_plan', 'success', 'message'],
-            outcomes=outcomes,
-            input_keys=input_keys + [userdata_key],
-            response_cb=plan_to_pre_skewer_pose_callback
+            outcomes=outcomes_sm,
+            input_keys=input_keys_sm,
+            output_keys=input_keys_sm,
+            response_cb=move_to_pre_skewer_pose_callback
         )
-        self.userdata_key = userdata_key
         
-    def request_cb(self, userdata, *args):
-          # Access userdata_key from self and handle the target_pose
-          target_pose = getattr(userdata, self.userdata_key)
-          return kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose)  
         
 class motion_generator(smach_ros.ServiceState):
     def __init__(self, target_pose_, input_keys_sm, outcomes_sm):
@@ -452,8 +378,6 @@ def main():
     rospy.init_node('feeding_task_state_machine')
 
     # Create a SMACH state machine
-    # sm = StateMachine(outcomes=['succeeded','aborted','preempted'])
-    # sm = smach.StateMachine(outcomes=[])
     sm = CustomStateMachine(outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
 
     # Initialize necessary data in feeding task
@@ -488,9 +412,9 @@ def main():
     sm.userdata.ud_message = ''
     sm.userdata.ud_anygrasp_transforms = []
     sm.userdata.ud_anygrasp_transform = Transform()
-    sm.userdata.pre_skewer_pose = Pose()
+    sm.userdata.ud_pre_skewer_pose = Pose()
     sm.userdata.ud_skewer_pose = Pose()
-    
+
     # Remap variables
     sm.userdata.ud_feeding_pose = feeding_pose
     sm.userdata.ud_target_pose_2 = target_pose_2
@@ -505,7 +429,6 @@ def main():
                                                   , outcomes_sm)
                                , transitions=transition_sm
                                , remapping=remapping_sm)
-    
         
         smach.StateMachine.add('motion_generator'
                                , motion_generator(sm.userdata.ud_feeding_pose
@@ -514,22 +437,12 @@ def main():
                                , transitions=transition_sm
                                , remapping=remapping_sm)
         
-        # smach.StateMachine.add('plan_to_pre_skewer_pose'
-        #                        , plan_to_pre_skewer_pose(sm.userdata.pre_skewer_pose
-        #                                           , input_keys_sm
-        #                                           , outcomes_sm
-        #                                           , sm.userdata)
-        #                        , transitions=transition_sm
-        #                        , remapping=remapping_sm)
- 
-        smach.StateMachine.add('plan_to_pre_skewer_pose',
-                              plan_to_pre_skewer_pose('/motion_planning_server',
-                                                      kortex_motion_planning.srv.GenerateKortexMotionPlan,
-                                                      input_keys_sm,
-                                                      outcomes_sm,
-                                                      'pre_skewer_pose'),
-                              transitions=transition_sm,
-                              remapping=remapping_sm) 
+        smach.StateMachine.add('move_to_pre_skewer_pose'
+                               , motion_generator(sm.userdata.ud_pre_skewer_pose
+                                                  , input_keys_sm
+                                                  , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
         
         smach.StateMachine.add('motion_executor'
                                , motion_executor('ud_motion_plan'
@@ -558,9 +471,6 @@ def main():
     # Execute SMACH tree
     outcome = sm.execute()
 
-    # Signal ROS shutdown (kill threads in background)
-    # rospy.signal_shutdown('All done.')
-    # Wait for ctrl-C to stop the application
     rospy.spin()
 
 

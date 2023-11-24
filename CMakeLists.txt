@@ -151,7 +151,7 @@ add_dependencies(bite_transfer
 ########## FOR TEST ##########
 # Move to initial position
 add_executable(initial
-	src/nodes/food_item_fetch.cpp
+	src/nodes/initial.cpp
 	src/functions/manipulation_class.cpp
   src/functions/feeding_task.cpp
 )

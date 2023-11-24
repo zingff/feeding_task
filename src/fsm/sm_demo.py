@@ -20,7 +20,7 @@ import std_srvs.srv
 from tf2_msgs import msg
 import anygrasp_generation.srv
 import kortex_motion_planning.srv
-from geometry_msgs.msg import Pose, Transform
+from geometry_msgs.msg import Pose, Transform, Quaternion
 from trajectory_msgs.msg import JointTrajectory
 import tf2_ros
 
@@ -215,6 +215,9 @@ def main():
     sm.userdata.ud_message = ''
     sm.userdata.ud_anygrasp_transforms = []
     sm.userdata.ud_anygrasp_transform = Transform()
+    # Skewer action
+    sm.userdata.ud_pre_skewer_pose = Pose()
+    sm.userdata.ud_skewer_pose = Pose()
 
     # Remap variables
     sm.userdata.ud_feeding_pose = feeding_pose

@@ -129,4 +129,45 @@ class Manipulation:
 if __name__ == "__main__":
     manipulation = Manipulation()
     manipulation.reach_food_item()
+    
+    
+import tf.transformations
+import geometry_msgs.msg
+
+def invert_transform(transform):
+    """
+    Inverts a geometry_msgs.msg.Transform object.
+    
+    Args:
+        transform (geometry_msgs.msg.Transform): The transform to be inverted.
+    
+    Returns:
+        geometry_msgs.msg.Transform: The inverted transform.
+    """
+    # Convert Transform to a 4x4 matrix
+    matrix = tf.transformations.compose_matrix(
+        translate=[transform.translation.x, transform.translation.y, transform.translation.z],
+        angles=tf.transformations.euler_from_quaternion([
+            transform.rotation.x, 
+            transform.rotation.y, 
+            transform.rotation.z, 
+            transform.rotation.w
+        ])
+    )
+
+    # Invert the matrix
+    inverse_matrix = tf.transformations.inverse_matrix(matrix)
+
+    # Convert the inverted matrix back to a Transform object
+    inverse_transform = geometry_msgs.msg.Transform()
+    inverse_transform.translation.x, inverse_transform.translation.y, inverse_transform.translation.z = tf.transformations.translation_from_matrix(inverse_matrix)
+    quat = tf.transformations.quaternion_from_matrix(inverse_matrix)
+    inverse_transform.rotation.x, inverse_transform.rotation.y, inverse_transform.rotation.z, inverse_transform.rotation.w = quat
+
+    return inverse_transform
+
+# Example usage
+# Assume T_tool_grasp is a properly defined Transform object
+# T_grasp_tool = invert_transform(T_tool_grasp)
+
 

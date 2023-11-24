@@ -1,7 +1,5 @@
 <launch>
     <group >
         <node pkg="feeding_task" name="initial" type="initial" output="screen" required="true"/>
-
-    </group>
-    
+    </group>  
 </launch>
