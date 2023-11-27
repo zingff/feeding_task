@@ -19,6 +19,7 @@ class AnsiColorCodes:
     BOLD_PURPLE = '\033[1;35m'
     BOLD_CYAN = '\033[1;36m'
     BOLD_WHITE = '\033[1;37m'
+    test1 = '\033[1;38'
 
 # Function to print the color name and sample message
 def print_color_message(color_code, color_name):
@@ -26,22 +27,24 @@ def print_color_message(color_code, color_name):
 
 # Print messages in all defined colors
 def main():
-    print_color_message(AnsiColorCodes.BLACK, "black")
-    print_color_message(AnsiColorCodes.RED, "red")
-    print_color_message(AnsiColorCodes.GREEN, "green")
-    print_color_message(AnsiColorCodes.YELLOW, "yellow")
-    print_color_message(AnsiColorCodes.BLUE, "blue")
-    print_color_message(AnsiColorCodes.PURPLE, "purple")
-    print_color_message(AnsiColorCodes.CYAN, "cyan")
-    print_color_message(AnsiColorCodes.WHITE, "white")
-    print_color_message(AnsiColorCodes.BOLD_BLACK, "bold black")
-    print_color_message(AnsiColorCodes.BOLD_RED, "bold red")
-    print_color_message(AnsiColorCodes.BOLD_GREEN, "bold green")
-    print_color_message(AnsiColorCodes.BOLD_YELLOW, "bold yellow")
-    print_color_message(AnsiColorCodes.BOLD_BLUE, "bold blue")
-    print_color_message(AnsiColorCodes.BOLD_PURPLE, "bold purple")
-    print_color_message(AnsiColorCodes.BOLD_CYAN, "bold cyan")
-    print_color_message(AnsiColorCodes.BOLD_WHITE, "bold white")
+    # print_color_message(AnsiColorCodes.BLACK, "black")
+    # print_color_message(AnsiColorCodes.RED, "red")
+    # print_color_message(AnsiColorCodes.GREEN, "green")
+    # print_color_message(AnsiColorCodes.YELLOW, "yellow")
+    # print_color_message(AnsiColorCodes.BLUE, "blue")
+    # print_color_message(AnsiColorCodes.PURPLE, "purple")
+    # print_color_message(AnsiColorCodes.CYAN, "cyan")
+    # print_color_message(AnsiColorCodes.WHITE, "white")
+    # print_color_message(AnsiColorCodes.BOLD_BLACK, "bold black")
+    # print_color_message(AnsiColorCodes.BOLD_RED, "bold red")
+    # print_color_message(AnsiColorCodes.BOLD_GREEN, "bold green")
+    # print_color_message(AnsiColorCodes.BOLD_YELLOW, "bold yellow")
+    # print_color_message(AnsiColorCodes.BOLD_BLUE, "bold blue")
+    # print_color_message(AnsiColorCodes.BOLD_PURPLE, "bold purple")
+    # print_color_message(AnsiColorCodes.BOLD_CYAN, "bold cyan")
+    # print_color_message(AnsiColorCodes.BOLD_WHITE, "bold white")
+    for i in range(30, 100):
+      print_color_message(f'\033[1;{i}m', i)
 
 if __name__ == "__main__":
     main()

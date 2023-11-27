@@ -28,7 +28,6 @@ from trajectory_msgs.msg import JointTrajectory
 import tf2_ros
 import math
 import tf.transformations
-from std_msgs.msg import Bool
 
 
 outcomes_sm = [
@@ -51,8 +50,6 @@ outcomes_sm = [
     , 'move_to_feeding_initial_position'
     , 'plan_to_feeding_pose'
     , 'execute_to_feeding_pose'
-    , 'collision_detected'
-    , 'normal'
                ]
 
 
@@ -82,6 +79,7 @@ transition_sm = {
     , 'motion_executor': 'motion_executor'  # deprecated
     , 'initial_motion_generator': 'initial_motion_generator'  # deprecated
     , 'joint_motion_generator' : 'joint_motion_generator'  # deprecated
+    
     , 'move_to_feeding_start_position': 'move_to_feeding_start_position'
     , 'plan_to_pre_skewer_pose': 'plan_to_pre_skewer_pose'
     , 'plan_to_skewer_pose': 'plan_to_skewer_pose'
@@ -92,8 +90,6 @@ transition_sm = {
     , 'move_to_feeding_initial_position' : 'move_to_feeding_initial_position'
     , 'plan_to_feeding_pose': 'plan_to_feeding_pose'
     , 'execute_to_feeding_pose': 'execute_to_feeding_pose'
-    , 'aborted': 'aborted'
-    , 'collision_detected': 'aborted'
 }
 
 
@@ -163,55 +159,10 @@ def invert_transform(transform):
     return inverse_transform
 
 
-class TopicState(smach.State):
-    def __init__(self, topic_name, message_type, timeout=None):
-        smach.State.__init__(self, outcomes=['succeeded', 'aborted', 'preempted'])
-        self.topic_name = topic_name
-        self.message_type = message_type
-        self.timeout = timeout
-        self.message_received = None
-        self.subscriber = rospy.Subscriber(self.topic_name, self.message_type, self.message_callback)
-
-    def message_callback(self, msg):
-        self.message_received = msg
-
-    def execute(self, userdata):
-        start_time = rospy.Time.now()
-        self.message_received = None
-        while not rospy.is_shutdown():
-            if self.message_received is not None:
-                return 'succeeded'
-            if self.timeout and rospy.Time.now() - start_time > rospy.Duration(self.timeout):
-                return 'aborted'
-            if self.preempt_requested():
-                self.service_preempt()
-                return 'preempted'
-            rospy.sleep(0.1)
-        return 'aborted'
-
-    def request_preempt(self):
-        super(TopicState, self).request_preempt()
-        self.subscriber.unregister()
-
 class StateOutputStyle:
-    success = '\033[1;42m'  # green
-    failure = '\033[1;41m'  # red
-    default = '\033[0m'  # default
-    
-    grey = '\033[1;30m' 
-    red = '\033[1;31m' 
-    green = '\033[1;32m' 
-    yellow = '\033[1;33m' 
-    blue = '\033[1;34m' 
-    purple = '\033[1;35m'
-    sky_blue = '\033[1;36m'
-    
-    bg_red = '\033[1;41m'
-    bg_green = '\033[1;42m'
-    bg_yellow = '\033[1;43m'
-    bg_blue = '\033[1;44m'
-    bg_purple = '\033[1;45m'
-    bg_sky_blue = '\033[1;46m'
+    success = '\033[1;92m'  # 35m
+    failure = '\033[1;91m' 
+    default = '\033[0m'  
   
   
 def success_loginfo(msg):
@@ -221,9 +172,6 @@ def success_loginfo(msg):
 
 def failure_loginfo(msg):
     rospy.loginfo(StateOutputStyle.failure + msg + StateOutputStyle.default)
-    
-def striking_loginfo(msg):
-    rospy.loginfo(StateOutputStyle.purple + msg + StateOutputStyle.default)
 
 
 def degrees2Radians(degrees):
@@ -750,36 +698,14 @@ class execute_to_feeding_pose(smach_ros.ServiceState):
             response_cb=execute_to_feeding_pose_callback
         )   
         
-class collision_detection(smach.State):
-  def __init__(self, 
-               outcomes, 
-               input_keys, 
-               output_keys):
-      super().__init__(
-        outcomes = outcomes_sm, 
-        input_keys  = input_keys_sm, 
-        output_keys = input_keys_sm
-        )
-      
-  def execute(self, userdata):
-    rospy.sleep(3)
-    return 'collision_detected'
 
-def collision_detection_callback(data, sm):
-  sm.userdata.collision_status = data.data
-  if (sm.userdata.collision_status):
-    striking_loginfo("Collision status: " + str(sm.userdata.collision_status))
-    return 'collision_detected'
+
 
 def main():
     rospy.init_node('feeding_task_state_machine')
 
+    # Create a SMACH state machine
     sm = CustomStateMachine(outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
-    cc = smach.Concurrence(
-      outcomes = outcomes_sm,
-      default_outcome = 'normal',
-      outcome_map={'collision_detected': {'collision_detection': 'collision_detected'}}
-    )
 
     # Initialize necessary data in feeding task
     # food_transfer
@@ -806,8 +732,6 @@ def main():
 
 
     # update_anygrasp = True
-    collision_status = rospy.Subscriber("/kortex_motion_planning/collision_detection", Bool, lambda data: collision_detection_callback(data, sm))
-    
 
     sm.userdata.motion_plan = JointTrajectory()
     sm.userdata.update_anygrasp = True
@@ -818,8 +742,6 @@ def main():
     sm.userdata.pre_skewer_pose = Pose()
     sm.userdata.skewer_pose = Pose()
     sm.userdata.post_skewer_pose = Pose()
-    sm.userdata.collision_status = Bool()
-    sm.userdata.collision_status.data = False
     
     # Remap variables
     sm.userdata.feeding_pose = feeding_pose
@@ -829,7 +751,26 @@ def main():
     # sm.userdata.update_anygrasp = update_anygrasp
 
     # Open the container
-    with sm:    
+    with sm:
+
+    
+        
+        # smach.StateMachine.add('motion_generator'  # deprecated
+        #                        , motion_generator(sm.userdata.feeding_pose
+        #                                           , input_keys_sm
+        #                                           , outcomes_sm)
+        #                        , transitions=transition_sm
+        #                        , remapping=remapping_sm)
+
+        
+        # smach.StateMachine.add('plan_to_pre_skewer_pose'  # deprecated
+        #                        , plan_to_pre_skewer_pose(sm.userdata.pre_skewer_pose
+        #                                           , input_keys_sm
+        #                                           , outcomes_sm
+        #                                           , sm.userdata)
+        #                        , transitions=transition_sm
+        #                        , remapping=remapping_sm)
+
         smach.StateMachine.add('move_to_feeding_start_position'
                                , move_to_feeding_start_position(sm.userdata.feeding_initial_position
                                                   , input_keys_sm
@@ -921,17 +862,33 @@ def main():
                                                  , outcomes_sm)
                                , transitions=transition_sm
                                , remapping=remapping_sm)
+
+
+        # smach.StateMachine.add('motion_executor'  # deprecated
+        #                        , motion_executor('motion_plan'
+        #                                          , input_keys_sm
+        #                                          , outcomes_sm)
+        #                        , transitions=transition_sm
+        #                        , remapping=remapping_sm)
         
-        
-        with cc:
-          smach.Concurrence.add('collision_detection'
-                                , collision_detection(
-                                  outcomes_sm,
-                                  input_keys_sm,
-                                  input_keys_sm
-                                ))
-          
-        smach.StateMachine.add('collision_detection', cc, transitions=transition_sm)
+              
+        # smach.StateMachine.add('motion_executor'  # deprecated
+        #                        , motion_executor('motion_plan'
+        #                                          , input_keys_sm
+        #                                          , outcomes_sm)
+        #                        , transitions=transition_sm
+        #                        , remapping=remapping_sm)
+
+               
+        # smach.StateMachine.add('initial_motion_generator'  # deprecated
+        #                        , motion_generator(sm.userdata.target_pose_2
+        #                                           , input_keys_sm
+        #                                           , outcomes_sm)
+        #                        , transitions=transition_sm
+        #                        , remapping=remapping_sm)
+
+    # sis = smach_ros.IntrospectionServer('feeding_smach_introspection_server', sm, '/Start')
+    # sis.start()
 
     # Execute SMACH tree
     outcome = sm.execute()

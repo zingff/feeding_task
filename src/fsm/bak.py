@@ -171,3 +171,144 @@ def invert_transform(transform):
 # T_grasp_tool = invert_transform(T_tool_grasp)
 
 
+import roslib; roslib.load_manifest('smach_tutorials')
+import rospy
+import smach
+import smach_ros
+
+# define state Foo
+class Foo(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['outcome1','outcome2'])
+        self.counter = 0
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state FOO')
+        if self.counter < 3:
+            self.counter += 1
+            return 'outcome1'
+        else:
+            return 'outcome2'
+
+
+# define state Bar
+class Bar(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['outcome1'])
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state BAR')
+        return 'outcome1'
+        
+
+
+# define state Bas
+class Bas(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['outcome3'])
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state BAS')
+        return 'outcome3'
+
+
+
+
+def main():
+    rospy.init_node('smach_example_state_machine')
+
+    # Create the top level SMACH state machine
+    sm_top = smach.StateMachine(outcomes=['outcome6'])
+    
+    # Open the container
+    with sm_top:
+
+        smach.StateMachine.add('BAS', Bas(),
+                               transitions={'outcome3':'CON'})
+
+        # Create the sub SMACH state machine
+        sm_con = smach.Concurrence(outcomes=['outcome4','outcome5'],
+                                   default_outcome='outcome4',
+                                   outcome_map={'outcome5':
+                                       { 'FOO':'outcome2',
+                                         'BAR':'outcome1'}})
+
+        # Open the container
+        with sm_con:
+            # Add states to the container
+            smach.Concurrence.add('FOO', Foo())
+            smach.Concurrence.add('BAR', Bar())
+
+        smach.StateMachine.add('CON', sm_con,
+                               transitions={'outcome4':'CON',
+                                            'outcome5':'outcome6'})
+
+    # Execute SMACH plan
+    outcome = sm_top.execute()
+
+
+if __name__ == '__main__':
+    main()
+    
+import smach
+
+# Define your Concurrence container
+cc = smach.Concurrence(
+    outcomes=['succeeded', 'aborted'],
+    default_outcome='succeeded',
+    outcome_map={'aborted': {'collision_detection': 'aborted'}}
+)
+
+# Assuming you're adding the Concurrence container to your main state machine 'sm'
+with sm:
+    # Add states to the Concurrence container 'cc' as needed
+    # ...
+
+    # Add the Concurrence container 'cc' to the main state machine 'sm'
+    smach.StateMachine.add('CONCURRENT_STATE', cc, 
+                           transitions={'succeeded': 'NEXT_STATE',  # Define the next state for 'succeeded'
+                                        'aborted': 'aborted'})     # Map 'aborted' to the 'aborted' outcome of the main state machine
+    
+import rospy
+from smach import State
+from std_msgs.msg import String  # or any other message type you need
+
+class TopicState(State):
+    def __init__(self, topic_name, message_type, timeout=None):
+        State.__init__(self, outcomes=['succeeded', 'aborted', 'preempted'])
+        self.topic_name = topic_name
+        self.message_type = message_type
+        self.timeout = timeout
+        self.message_received = None
+        self.subscriber = rospy.Subscriber(self.topic_name, self.message_type, self.message_callback)
+
+    def message_callback(self, msg):
+        self.message_received = msg
+
+    def execute(self, userdata):
+        start_time = rospy.Time.now()
+        self.message_received = None
+        while not rospy.is_shutdown():
+            if self.message_received is not None:
+                return 'succeeded'
+            if self.timeout and rospy.Time.now() - start_time > rospy.Duration(self.timeout):
+                return 'aborted'
+            if self.preempt_requested():
+                self.service_preempt()
+                return 'preempted'
+            rospy.sleep(0.1)
+        return 'aborted'
+
+    def request_preempt(self):
+        super(TopicState, self).request_preempt()
+        self.subscriber.unregister()
+
+
+sm = smach.StateMachine(outcomes=['succeeded', 'aborted', 'preempted'])
+with sm:
+    smach.StateMachine.add('SUBSCRIBE_TOPIC', TopicState('/my_topic', String, timeout=5.0),
+                           transitions={'succeeded': 'NEXT_STATE', 
+                                        'aborted': 'ERROR_STATE', 
+                                        'preempted': 'PREEMPTED_STATE'})  
+    # replace the original collision_detection class
+
