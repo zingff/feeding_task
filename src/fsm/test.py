@@ -43,8 +43,11 @@ def main():
     # print_color_message(AnsiColorCodes.BOLD_PURPLE, "bold purple")
     # print_color_message(AnsiColorCodes.BOLD_CYAN, "bold cyan")
     # print_color_message(AnsiColorCodes.BOLD_WHITE, "bold white")
-    for i in range(30, 100):
-      print_color_message(f'\033[1;{i}m', i)
+    # '\033[38;5;208m'
+    for i in range(0, 256):
+      # print_color_message(f'\033[1;{i}m', i)
+      print_color_message(f'\033[1;38;5;{i}m', i)
+      
 
 if __name__ == "__main__":
     main()

@@ -3,12 +3,13 @@
 # Note: a finite state machine for feeding task
 # Note: name of the manipulator: sausage lip arm (SLA)
 
-# TODO List:
-# * concurrent sm for collision detection (cd is not always necessary)
+# TODO List: all done
+# . concurrent sm for collision detection (cd is not always necessary) \/
 # . add a joint planner in kmp \/
 # . modify the skewer action in a cb in food item selector \/
 # . add a loop for skewer task \/
- 
+
+from email import message
 import anygrasp_generation
 import kortex_motion_planning
 from kortex_motion_planning.msg import JointPositions
@@ -29,18 +30,17 @@ import tf2_ros
 import math
 import tf.transformations
 from std_msgs.msg import Bool
+import threading
 
+collision_detected = False
+COLLISION_DETECTION_TOPIC = "/kortex_motion_planning/collision_detection"
 
 outcomes_sm = [
       'motion_generator'
     , 'food_item_selector'
-    , 'motion_executor'  # deprecated
-    , 'initial_motion_generator'  # deprecated
     , 'succeeded'
     , 'aborted'
     , 'preempted'
-    , 'joint_motion_generator'  # deprecated
-    
     , 'move_to_feeding_start_position'
     , 'plan_to_pre_skewer_pose'
     , 'plan_to_skewer_pose'
@@ -53,6 +53,8 @@ outcomes_sm = [
     , 'execute_to_feeding_pose'
     , 'collision_detected'
     , 'normal'
+    , 'collision_status'
+    , 'collision_detection'
                ]
 
 
@@ -61,27 +63,20 @@ input_keys_sm = [
       'motion_plan'
     , 'success'
     , 'update_anygrasp'
-    # , 'update_anygrasp'  # deprecated
     , 'success'
     , 'anygrasp_transforms'
-    # , 'success'  # deprecated
-    # , 'anygrasp_transforms'  # deprecated
     , 'anygrasp_transform'
-    # , 'anygrasp_transform'  # deprecated
-    # , 'pre_skewer_pose'  # deprecated
     , 'pre_skewer_pose'
     , 'skewer_pose'
     , 'post_skewer_pose'
     , 'feeding_pose'
+    , 'collision_status'
+
                  ]
 
 
 transition_sm = {
-      'motion_generator': 'motion_generator'  # deprecated
-    , 'food_item_selector': 'food_item_selector'
-    , 'motion_executor': 'motion_executor'  # deprecated
-    , 'initial_motion_generator': 'initial_motion_generator'  # deprecated
-    , 'joint_motion_generator' : 'joint_motion_generator'  # deprecated
+    'food_item_selector': 'food_item_selector'
     , 'move_to_feeding_start_position': 'move_to_feeding_start_position'
     , 'plan_to_pre_skewer_pose': 'plan_to_pre_skewer_pose'
     , 'plan_to_skewer_pose': 'plan_to_skewer_pose'
@@ -94,6 +89,7 @@ transition_sm = {
     , 'execute_to_feeding_pose': 'execute_to_feeding_pose'
     , 'aborted': 'aborted'
     , 'collision_detected': 'aborted'
+    , 'collision_detection': 'collision_detection'
 }
 
 
@@ -106,7 +102,6 @@ remapping_sm = {
     , 'anygrasp_transforms': 'anygrasp_transforms'
     , 'success': 'success'
     , 'anygrasp_transform': 'anygrasp_transform'
-    # , 'pre_skewer_pose' : 'pre_skewer_pose' # deprecated
     , 'pre_skewer_pose': 'pre_skewer_pose'
     , 'skewer_pose': 'skewer_pose'
     , 'feeding_pose': 'feeding_pose'
@@ -163,39 +158,9 @@ def invert_transform(transform):
     return inverse_transform
 
 
-class TopicState(smach.State):
-    def __init__(self, topic_name, message_type, timeout=None):
-        smach.State.__init__(self, outcomes=['succeeded', 'aborted', 'preempted'])
-        self.topic_name = topic_name
-        self.message_type = message_type
-        self.timeout = timeout
-        self.message_received = None
-        self.subscriber = rospy.Subscriber(self.topic_name, self.message_type, self.message_callback)
-
-    def message_callback(self, msg):
-        self.message_received = msg
-
-    def execute(self, userdata):
-        start_time = rospy.Time.now()
-        self.message_received = None
-        while not rospy.is_shutdown():
-            if self.message_received is not None:
-                return 'succeeded'
-            if self.timeout and rospy.Time.now() - start_time > rospy.Duration(self.timeout):
-                return 'aborted'
-            if self.preempt_requested():
-                self.service_preempt()
-                return 'preempted'
-            rospy.sleep(0.1)
-        return 'aborted'
-
-    def request_preempt(self):
-        super(TopicState, self).request_preempt()
-        self.subscriber.unregister()
-
 class StateOutputStyle:
-    success = '\033[1;42m'  # green
-    failure = '\033[1;41m'  # red
+    success = '\033[1;38;5;46m'  # green
+    failure = '\033[1;31m'  # red
     default = '\033[0m'  # default
     
     grey = '\033[1;30m' 
@@ -212,18 +177,26 @@ class StateOutputStyle:
     bg_blue = '\033[1;44m'
     bg_purple = '\033[1;45m'
     bg_sky_blue = '\033[1;46m'
+    
+    collision = '\033[1;38;5;123m'  # cyan
+    collision2 = '\033[1;38;5;195m' # near white
+    striking  = '\033[1;38;5;190m'
   
   
 def success_loginfo(msg):
-    rospy.loginfo(StateOutputStyle.default + "Please check the outcome of current state" + StateOutputStyle.success)
     rospy.loginfo(StateOutputStyle.success + msg + StateOutputStyle.default)
 
 
 def failure_loginfo(msg):
     rospy.loginfo(StateOutputStyle.failure + msg + StateOutputStyle.default)
+
     
 def striking_loginfo(msg):
-    rospy.loginfo(StateOutputStyle.purple + msg + StateOutputStyle.default)
+    rospy.loginfo(StateOutputStyle.striking + msg + StateOutputStyle.default)
+
+    
+def collision_detected_loginfo(msg):
+    rospy.loginfo(StateOutputStyle.collision + "Collision detected in state: "  + msg  + ", aborting..." + StateOutputStyle.default)
 
 
 def degrees2Radians(degrees):
@@ -233,6 +206,57 @@ def degrees2Radians(degrees):
 class CustomStateMachine(smach.StateMachine):
     def __init__(self, custom_outcomes, input_keys=[], output_keys=[]):
         super(CustomStateMachine, self).__init__(custom_outcomes, input_keys, output_keys)
+
+
+# TODO: override the execute function for state with collision detection requirement
+class ServiceStateWithCollisionDetection(ServiceState):
+    def __init__(self, service_name, service_spec, request_key=None, response_slots=None, outcomes=None, input_keys=None, output_keys=None, response_cb=None, request_cb=None):
+        super(ServiceStateWithCollisionDetection, self).__init__(
+            service_name=service_name,
+            service_spec=service_spec,
+            request_key=request_key,
+            response_slots=response_slots,
+            outcomes=outcomes,
+            input_keys=input_keys,
+            output_keys=output_keys,
+            response_cb=response_cb,
+            request_cb=request_cb
+        )
+        self._proxy = rospy.ServiceProxy(service_name, service_spec)
+        rospy.wait_for_service(service_name, timeout=5.0)  # Wait for the service to become available
+
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+
+        # Function to run service call in a separate thread
+        def service_call():
+            global collision_detected
+            try:
+                self._response = self._proxy(self._request)
+            except rospy.ServiceException as ex:
+                rospy.logerr("Exception when calling service '%s': %s" % (self._service_name, str(ex)))
+                self._response = None
+
+        # Start the service call in a separate thread
+        service_thread = threading.Thread(target=service_call)
+        service_thread.start()
+
+        # Main loop for collision detection
+        while service_thread.is_alive():
+            if collision_detected:
+                rospy.loginfo("Collision detected during service execution")
+                return 'aborted'
+            rospy.sleep(0.1)
+
+        # Check if service call was successful
+        if self._response is None:
+            return 'aborted'
+
+        # Process the response here
+        # ...
+
+        return 'succeeded'
 
 
 def generic_state_callback(userdata, response, next_state_on_success, next_state_on_failure):
@@ -260,7 +284,7 @@ def generic_userdata_state_callback(userdata, response, next_state_on_success, n
         userdata.success = success_flag_value
         return next_state_on_success
     else:
-        success_loginfo(f"{state_name}: failed")
+        failure_loginfo(f"{state_name}: failed")
         userdata.success = not success_flag_value
         return next_state_on_failure
 
@@ -287,13 +311,6 @@ def move_to_feeding_start_position_callback(userdata, response):
                                   'aborted')
 
 
-# def motion_executor_callback(userdata, response):  # deprecated
-#   return generic_state_callback(userdata, 
-#                                 response, 
-#                                 'food_item_selector', 
-#                                 'aborted')
-
-
 def plan_to_pre_skewer_pose_callback(userdata, response):
   rospy.loginfo("Received pre_skewer_pose in state plan_to_pre_skewer_pose: %s", str(userdata.pre_skewer_pose))
   return generic_state_callback(userdata, 
@@ -303,7 +320,7 @@ def plan_to_pre_skewer_pose_callback(userdata, response):
   
   
 def plan_to_skewer_pose_callback(userdata, response):
-  rospy.loginfo("Received skewer_pose in state plan_to_skewer_pose: %s", str(userdata.pre_skewer_pose))
+  rospy.loginfo("Received skewer_pose in state plan_to_skewer_pose: %s", str(userdata.skewer_pose))
   return generic_state_callback(userdata, 
                                 response, 
                                 'execute_to_skewer_pose',
@@ -311,7 +328,7 @@ def plan_to_skewer_pose_callback(userdata, response):
   
 
 def plan_to_post_skewer_pose_callback(userdata, response):
-  rospy.loginfo("Received post_skewer_pose in state plan_to_post_skewer_pose: %s", str(userdata.pre_skewer_pose))
+  rospy.loginfo("Received post_skewer_pose in state plan_to_post_skewer_pose: %s", str(userdata.post_skewer_pose))
   return generic_state_callback(userdata, 
                                 response, 
                                 'execute_to_post_skewer_pose',
@@ -359,54 +376,6 @@ def move_to_feeding_initial_position_callback(userdata, response):
                                   'plan_to_feeding_pose', 
                                   'aborted') 
   
-# def motion_generator_callback(userdata, response):
-#     if response.success:
-#         rospy.loginfo("motion_generator: success")
-
-#         return 'motion_executor'
-#     else:
-#         rospy.logwarn("motion_generator: failed")
-#         return 'motion_generator'
-   
-
-# def move_to_feeding_initial_position_callback(userdata, response):
-#     function_name = inspect.currentframe().f_code.co_name
-#     state_name = function_name.replace('_callback', '')
-
-#     if response.success:
-#         rospy.loginfo(f"{state_name}: success")
-#         return 'food_item_selector'
-#     else:
-#         rospy.logwarn(f"{state_name}: failed")
-#         return 'aborted'
-
-
-# def motion_executor_callback(userdata, response):
-#     # if response.success:
-#     #     return 'wait'
-#     if response.success:
-#         rospy.loginfo("motion_executor: success")
-#         return 'grasp_generator'
-
-
-# def food_item_selector_callback(userdata, response):
-#     if response.success:
-#         rospy.loginfo("food_item_selector: success")
-#         userdata.success = True
-#         return 'initial_motion_generator'
-#     else:
-#         rospy.logwarn("food_item_selector: failed")
-#         userdata.success = False
-#         return 'failed'
-
-
-# class wait(smach.State):
-#     def __init__(self):
-#         smach.State.__init__(self, outcomes=outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
-
-#     def execute(self, ud):
-#         rospy.sleep(10)
-
 
 class food_item_selector(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
@@ -429,8 +398,8 @@ class food_item_selector(smach_ros.ServiceState):
 
         if userdata.success:
             userdata.anygrasp_transform = userdata.anygrasp_transforms[0]
-            print('The best grasp from AnyGrasp: ')
-            print(userdata.anygrasp_transform)
+            # print('The best grasp from AnyGrasp: ')
+            # print(userdata.anygrasp_transform)
             q_base_grasp = Quaternion()
             q_base_grasp.x = 0.7071068
             q_base_grasp.y = 0.7071068
@@ -456,7 +425,7 @@ class food_item_selector(smach_ros.ServiceState):
             T_base_grasp = Transform()
             T_base_grasp = userdata.anygrasp_transform 
             T_base_grasp.rotation = q_base_grasp
-            print("T_base_grasp: ", T_base_grasp)
+            # print("T_base_grasp: ", T_base_grasp)
             
             # T_tool_grasp
             T_tool_grasp = Transform()
@@ -477,8 +446,8 @@ class food_item_selector(smach_ros.ServiceState):
             T_grasp_tool = invert_transform(T_tool_grasp)
             # T_grasp_tool = T_tool_grasp
             
-            print("T_tool_grasp: ", T_tool_grasp)
-            print("T_grasp_tool: ", T_grasp_tool)
+            # print("T_tool_grasp: ", T_tool_grasp)
+            # print("T_grasp_tool: ", T_grasp_tool)
             
             # EE (tool_frame)
             T_base_tool = Transform()
@@ -490,7 +459,7 @@ class food_item_selector(smach_ros.ServiceState):
                     transform_to_matrix(T_grasp_tool)
                 )
             )
-            print("p_base_tool: ", T_base_tool)            
+            # print("p_base_tool: ", T_base_tool)            
             
             # pre-skewer
             pre_skewer_pose = Pose()
@@ -499,13 +468,13 @@ class food_item_selector(smach_ros.ServiceState):
             pre_skewer_pose.position.z = T_base_tool.translation.z + 0.08
             pre_skewer_pose.orientation = q_grasp
             userdata.pre_skewer_pose = pre_skewer_pose
-            print("pre_skewer_pose: ")
-            print(userdata.pre_skewer_pose) 
+            # print("pre_skewer_pose: ")
+            # print(userdata.pre_skewer_pose) 
             post_skewer_pose = Pose()
             pre_skewer_pose = pre_skewer_pose
             userdata.post_skewer_pose = post_skewer_pose
-            print("pre_skewer_pose: ")
-            print(userdata.post_skewer_pose) 
+            # print("post_skewer_pose: ")
+            # print(userdata.post_skewer_pose) 
             
             # skewer
             skewer_pose = Pose()
@@ -526,8 +495,39 @@ class food_item_selector(smach_ros.ServiceState):
                 anygrasp_tf_msg.transform.translation = transform.translation
                 anygrasp_tf_msg.transform.rotation = transform.rotation
                 self.anygrasp_tf_broadcaster.sendTransform(anygrasp_tf_msg)
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
 
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(food_item_selector, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
         return outcome
+
 
 
 class move_to_feeding_start_position(smach_ros.ServiceState):
@@ -542,6 +542,39 @@ class move_to_feeding_start_position(smach_ros.ServiceState):
             output_keys=input_keys_sm,
             response_cb=move_to_feeding_start_position_callback
         )
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
+
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(move_to_feeding_start_position, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
+        return outcome
 
 class move_to_feeding_initial_position(smach_ros.ServiceState):
     def __init__(self, target_positions_, input_keys_sm, outcomes_sm):
@@ -555,20 +588,39 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
             output_keys=input_keys_sm,
             response_cb=move_to_feeding_initial_position_callback
         )
-    
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
+
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(move_to_feeding_initial_position, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
         
-# class plan_to_pre_skewer_pose(smach_ros.ServiceState):
-#     def __init__(self, target_pose_, input_keys_sm, outcomes_sm, userdata):
-#         super(plan_to_pre_skewer_pose, self).__init__(
-#             service_name='/motion_planning_server',
-#             service_spec=kortex_motion_planning.srv.GenerateKortexMotionPlan,
-#             request=kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose_),
-#             response_slots=['motion_plan', 'success', 'message'],
-#             outcomes=outcomes_sm,
-#             input_keys=input_keys_sm,
-#             output_keys=input_keys_sm,
-#             response_cb=plan_to_pre_skewer_pose_callback
-#         )
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
+        return outcome
 
 class plan_to_pre_skewer_pose(smach_ros.ServiceState):
     def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
@@ -588,6 +640,39 @@ class plan_to_pre_skewer_pose(smach_ros.ServiceState):
     def request_cb(self, userdata, *args):
           target_pose = getattr(userdata, self.userdata_key)
           return kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose)  
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
+
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(plan_to_pre_skewer_pose, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
+        return outcome
 
 
 class plan_to_skewer_pose(smach_ros.ServiceState):
@@ -608,7 +693,39 @@ class plan_to_skewer_pose(smach_ros.ServiceState):
     def request_cb(self, userdata, *args):
           target_pose = getattr(userdata, self.userdata_key)
           return kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose)  
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
 
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(plan_to_skewer_pose, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
+        return outcome
 
 class plan_to_post_skewer_pose(smach_ros.ServiceState):
     def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
@@ -628,35 +745,39 @@ class plan_to_post_skewer_pose(smach_ros.ServiceState):
     def request_cb(self, userdata, *args):
           target_pose = getattr(userdata, self.userdata_key)
           return kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose) 
- 
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
+
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(plan_to_post_skewer_pose, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
         
-# class motion_generator(smach_ros.ServiceState):
-#     def __init__(self, target_pose_, input_keys_sm, outcomes_sm):
-#         super(motion_generator, self).__init__(
-#             service_name='/motion_planning_server',
-#             service_spec=kortex_motion_planning.srv.GenerateKortexMotionPlan,
-#             request=kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose_),
-#             response_slots=['motion_plan', 'success', 'message'],
-#             outcomes=outcomes_sm,
-#             input_keys=input_keys_sm,
-#             output_keys=input_keys_sm,
-#             response_cb=motion_generator_callback
-#         )
-
-
-# class motion_executor(smach_ros.ServiceState):
-#     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
-#         super(motion_executor, self).__init__(
-#             service_name='/motion_execution_server',
-#             service_spec=kortex_motion_planning.srv.ExecuteMotionPlan,
-#             # request=kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose_),
-#             request_key=request_key_,
-#             response_slots=['success', 'message'],
-#             outcomes=outcomes_sm,
-#             input_keys=input_keys_sm,
-#             output_keys=input_keys_sm,
-#             response_cb=motion_executor_callback
-#         )
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
+        return outcome
 
 
 class execute_to_pre_skewer_pose(smach_ros.ServiceState):
@@ -672,7 +793,41 @@ class execute_to_pre_skewer_pose(smach_ros.ServiceState):
             output_keys=input_keys_sm,
             response_cb=execute_to_pre_skewer_pose_callback
         )
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
 
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(execute_to_pre_skewer_pose, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
+        return outcome
+ 
+      
 class execute_to_skewer_pose(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
         super(execute_to_skewer_pose, self).__init__(
@@ -685,7 +840,8 @@ class execute_to_skewer_pose(smach_ros.ServiceState):
             input_keys=input_keys_sm,
             output_keys=input_keys_sm,
             response_cb=execute_to_skewer_pose_callback
-        )
+        ) 
+      
         
 class execute_to_post_skewer_pose(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
@@ -700,6 +856,40 @@ class execute_to_post_skewer_pose(smach_ros.ServiceState):
             output_keys=input_keys_sm,
             response_cb=execute_to_post_skewer_pose_callback
         )
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
+
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(execute_to_post_skewer_pose, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
+        
+        return outcome    
+        
         
 class plan_to_feeding_pose(smach_ros.ServiceState):
     def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
@@ -719,23 +909,41 @@ class plan_to_feeding_pose(smach_ros.ServiceState):
     def request_cb(self, userdata, *args):
           target_pose = getattr(userdata, self.userdata_key)
           return kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose) 
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
 
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
 
-# class plan_to_feeding_pose(smach_ros.ServiceState):
-#     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
-#         super(plan_to_feeding_pose, self).__init__(
-#             service_name='/motion_execution_server',
-#             service_spec=kortex_motion_planning.srv.ExecuteMotionPlan,
-#             # request=kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose_),
-#             request_key=request_key_,
-#             response_slots=['success', 'message'],
-#             outcomes=outcomes_sm,
-#             input_keys=input_keys_sm,
-#             output_keys=input_keys_sm,
-#             response_cb=plan_to_feeding_pose_callback
-#         )        
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(plan_to_feeding_pose, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
         
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'aborted'
         
+        return outcome
+
+     
 class execute_to_feeding_pose(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
         super(execute_to_feeding_pose, self).__init__(
@@ -749,37 +957,50 @@ class execute_to_feeding_pose(smach_ros.ServiceState):
             output_keys=input_keys_sm,
             response_cb=execute_to_feeding_pose_callback
         )   
-        
-class collision_detection(smach.State):
-  def __init__(self, 
-               outcomes, 
-               input_keys, 
-               output_keys):
-      super().__init__(
-        outcomes = outcomes_sm, 
-        input_keys  = input_keys_sm, 
-        output_keys = input_keys_sm
-        )
-      
-  def execute(self, userdata):
-    rospy.sleep(3)
-    return 'collision_detected'
+    def execute(self, userdata):
+        global collision_detected
+        collision_detected = False
+        collision_thread_stop = threading.Event()
 
-def collision_detection_callback(data, sm):
-  sm.userdata.collision_status = data.data
-  if (sm.userdata.collision_status):
-    striking_loginfo("Collision status: " + str(sm.userdata.collision_status))
-    return 'collision_detected'
+        def collision_detection():
+            global collision_detected
+            
+            def callback(msg):
+                global collision_detected
+                if msg.data:
+                    collision_detected = True
+                    collision_thread_stop.set()
+
+            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+                rospy.sleep(0.1)
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(execute_to_feeding_pose, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        
+        if collision_detected:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            return 'plan_to_feeding_pose'
+        
+        return outcome
+
 
 def main():
     rospy.init_node('feeding_task_state_machine')
 
     sm = CustomStateMachine(outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
-    cc = smach.Concurrence(
-      outcomes = outcomes_sm,
-      default_outcome = 'normal',
-      outcome_map={'collision_detected': {'collision_detection': 'collision_detected'}}
-    )
+    # cc = smach.Concurrence(
+    #   outcomes = outcomes_sm,
+    #   default_outcome = 'normal',
+    #   outcome_map={'collision_detection': {'collision_detection': 'collision_detection'}}
+    # )
 
     # Initialize necessary data in feeding task
     # food_transfer
@@ -806,7 +1027,10 @@ def main():
 
 
     # update_anygrasp = True
-    collision_status = rospy.Subscriber("/kortex_motion_planning/collision_detection", Bool, lambda data: collision_detection_callback(data, sm))
+    # collision_status = Value('b', False) 
+    # rospy.Subscriber('/kortex_motion_planning/collision_detection', Bool, lambda data: collision_detection_callback(data, sm))
+    # collision_status = Value('b', False)  # Shared, thread-safe boolean
+    # collision_subscriber = rospy.Subscriber('/kortex_motion_planning/collision_detection', Bool, collision_detection_callback, callback_args=(collision_status))
     
 
     sm.userdata.motion_plan = JointTrajectory()
@@ -827,6 +1051,9 @@ def main():
     sm.userdata.target_pose_2 = target_pose_2
     sm.userdata.feeding_initial_position = feeding_initial_position
     # sm.userdata.update_anygrasp = update_anygrasp
+    
+    # collision_detection_thread = threading.Thread(target=collision_detection_callback)
+    # collision_detection_thread.start()
 
     # Open the container
     with sm:    
@@ -923,22 +1150,19 @@ def main():
                                , remapping=remapping_sm)
         
         
-        with cc:
-          smach.Concurrence.add('collision_detection'
-                                , collision_detection(
-                                  outcomes_sm,
-                                  input_keys_sm,
-                                  input_keys_sm
-                                ))
+        # with cc:
+        #   smach.Concurrence.add('collision_detection'
+        #                         , collision_detection(
+        #                           outcomes_sm,
+        #                           input_keys_sm,
+        #                           input_keys_sm
+        #                         ))
           
-        smach.StateMachine.add('collision_detection', cc, transitions=transition_sm)
+        # smach.StateMachine.add('collision_detection', cc, transitions=transition_sm)
 
     # Execute SMACH tree
     outcome = sm.execute()
 
-    # Signal ROS shutdown (kill threads in background)
-    # rospy.signal_shutdown('All done.')
-    # Wait for ctrl-C to stop the application
     rospy.spin()
 
 

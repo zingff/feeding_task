@@ -312,3 +312,286 @@ with sm:
                                         'preempted': 'PREEMPTED_STATE'})  
     # replace the original collision_detection class
 
+
+
+
+# // Assuming these are defined somewhere in your code
+# ros::Publisher collision_status_pub;
+# std_msgs::Bool collision_state;
+# const double TAU_THRESHOLD = ...;  // Your threshold value
+
+# // ... inside your loop or function where you check for collision ...
+
+# if (delta_tau.maxCoeff() >= TAU_THRESHOLD) {
+#     ROS_INFO(YELLOW "Excessive joint torque detected! Stopping!" RESET);
+
+#     if (stop_client.call(stop_action)) {
+#         ROS_INFO(GREEN "Succeeded to Stop!" RESET);
+#     } else {
+#         ROS_INFO(RED "Failed to stop! Press emergency stop!" RESET);
+#         // return 1; // Depending on your application, you might want to uncomment this
+#     }
+
+#     // Set collision state to true and publish for 3 seconds
+#     collision_state.data = true;
+#     ros::Time start_time = ros::Time::now();
+#     while (ros::Time::now() - start_time < ros::Duration(3.0)) {
+#         collision_status_pub.publish(collision_state);
+#         ros::spinOnce();
+#         ros::Duration(0.1).sleep();  // Small sleep to avoid flooding the topic
+#     }
+
+#     // Optionally, reset collision_state to false after 3 seconds
+#     collision_state.data = false;
+#     collision_status_pub.publish(collision_state);
+# }
+# ros::spinOnce();
+
+
+import threading
+
+# Shared variable for collision status
+collision_detected = False
+
+def collision_monitor():
+    global collision_detected
+    while not rospy.is_shutdown():
+        # Check for collision (e.g., by subscribing to a collision topic)
+        # Set collision_detected to True if a collision occurs
+        if check_collision():
+            collision_detected = True
+        rospy.sleep(0.1)
+
+# Start the collision monitor in a separate thread
+collision_thread = threading.Thread(target=collision_monitor)
+collision_thread.start()
+
+# In your state machine states, check for collision
+class SomeState(smach.State):
+    def execute(self, userdata):
+        global collision_detected
+        if collision_detected:
+            # Handle collision
+            return 'collision_detected'
+        # Normal state execution logic
+        # ...
+
+    def execute(self, userdata):
+        global global_collision_detected
+        # Your state execution logic...
+        if global_collision_detected:
+            rospy.logwarn("Collision detected in FoodItemSelector, aborting.")
+            return 'aborted'
+        # Continue with the state logic...
+        return 'next_state'
+
+
+class move_to_feeding_initial_position(smach_ros.ServiceState):
+    def __init__(self, target_positions_, input_keys_sm, outcomes_sm):
+        super(move_to_feeding_initial_position, self).__init__(
+            service_name='/kortex_simple_joint_motion_service',
+            service_spec=kortex_motion_planning.srv.KortexSimpleJmpe,
+            request=kortex_motion_planning.srv.KortexSimpleJmpeRequest(target_positions_),
+            response_slots=['success'],
+            outcomes=outcomes_sm,
+            input_keys=input_keys_sm,
+            output_keys=input_keys_sm,
+            response_cb=move_to_feeding_initial_position_callback
+        )
+
+    def execute(self, userdata):
+        outcome = super(move_to_feeding_initial_position, self).execute(userdata)
+        global collision_detected
+        class_name = self.__class__.__name__  # Get the class name
+
+        if collision_detected:
+            striking_loginfo(f"Collision detected in state: {class_name}, aborting...")
+            return 'aborted'
+        return outcome
+
+
+def execute(self, ud):
+    """Execute service with integrated collision detection."""
+    # Initialize collision detection flag
+    global collision_detected
+    collision_detected = False
+
+    # Function to check for collision
+    def check_collision():
+        # Implement your collision detection logic here
+        # Update the global collision_detected variable as needed
+        pass
+
+    # Rest of the existing code for preemption and service connection...
+
+    # Grab request key if set
+    # Existing code to grab the request key...
+
+    # Call user-supplied callback, if set, to get a request
+    # Existing code for request callback...
+
+    if self._request is None:
+        rospy.logerr("Attempting to call service "+self._service_name+" with no request")
+        return 'aborted'
+
+    # Call service with collision detection
+    try:
+        rospy.logdebug("Calling service %s with request:\n%s" % (self._service_name, str(self._request)))
+        self._response_future = self._proxy.call_async(self._request)
+        while not self._response_future.done():
+            # Check for collision
+            check_collision()
+            if collision_detected:
+                rospy.loginfo("Collision detected during service execution")
+                return 'aborted'
+
+            # Sleep for a short duration to avoid busy waiting
+            rospy.sleep(0.1)
+    except rospy.ServiceException as ex:
+        rospy.logerr("Exception when calling service '%s': %s" % (self._service_name, str(ex)))
+        return 'aborted'
+
+    # Retrieve the response
+    try:
+        self._response = self._response_future.result()
+    except Exception as ex:
+        rospy.logerr("Exception when getting the response from service '%s': %s" % (self._service_name, str(ex)))
+        return 'aborted'
+
+    # Call response callback if it's set
+    # Existing code for response callback...
+
+    if self._response_key is not None:
+        ud[self._response_key] = self._response
+
+    for key in self._response_slots:
+        ud[key] = getattr(self._response,key)
+
+    if response_cb_outcome is not None:
+        return response_cb_outcome
+
+    return 'succeeded'
+  
+  
+def execute(self, ud):
+    """Execute service with integrated collision detection."""
+    global collision_detected
+    collision_detected = False
+
+
+    # Make sure we're connected to the service
+    try:
+        while self._proxy is None:
+            if self.preempt_requested():
+                rospy.loginfo("Preempting while waiting for service '%s'." % self._service_name)
+                self.service_preempt()
+                return 'preempted'
+            if rospy.is_shutdown():
+                rospy.loginfo("Shutting down while waiting for service '%s'." % self._service_name)
+                return 'aborted'
+            try:
+                rospy.wait_for_service(self._service_name,1.0)
+                self._proxy = rospy.ServiceProxy(self._service_name, self._service_spec)
+                rospy.logdebug("Connected to service '%s'" % self._service_name)
+            except rospy.ROSException as ex:
+                rospy.logwarn("Still waiting for service '%s'..." % self._service_name)
+    except:
+        rospy.logwarn("Terminated while waiting for service '%s'." % self._service_name)
+        return 'aborted'
+    # Rest of the existing code for preemption and service connection...
+
+    # Grab request key if set
+    # Existing code to grab the request key...
+        # Grab request key if set
+    if self._request_key is not None:
+        if self._request_key in ud:
+            self._request = ud[self._request_key]
+        else:
+            rospy.logerr("Requested request key '%s' not in userdata struture. Available keys are: %s" % (self._request_key, str(list(ud.keys()))))
+            return 'aborted'
+    # Write request fields from userdata if set
+    for key in self._request_slots:
+        if key in ud:
+            setattr(self._request,key,ud[key])
+        else:
+            rospy.logerr("Requested request slot key '%s' is not in userdata strcture. Available keys are: %s" % (key, str(list(ud.keys()))))
+            return 'aborted'
+
+    # Call user-supplied callback, if set, to get a request
+    # Existing code for request callback...
+    if self._request_cb is not None:
+        try:
+            request_update = self._request_cb(
+                    smach.Remapper(
+                            ud,
+                            self._request_cb_input_keys,
+                            self._request_cb_output_keys,
+                            []),
+                    self._request,
+                    *self._request_cb_args,
+                    **self._request_cb_kwargs)
+            if request_update is not None:
+                self._request = request_update
+        except:
+            rospy.logerr("Could not execute request callback: "+traceback.format_exc())
+            return 'aborted'
+
+    if self._request is None:
+        rospy.logerr("Attempting to call service "+self._service_name+" with no request")
+        return 'aborted'
+
+    # Call service with collision detection
+    try:
+        rospy.logdebug("Calling service %s with request:\n%s" % (self._service_name, str(self._request)))
+        self._response_future = self._proxy.call_async(self._request)
+        while not self._response_future.done():
+            # Check for collision
+            if collision_detected:
+                rospy.loginfo("Collision detected during service execution")
+                return 'aborted'
+
+            # Sleep for a short duration to avoid busy waiting
+            rospy.sleep(0.1)
+    except rospy.ServiceException as ex:
+        rospy.logerr("Exception when calling service '%s': %s" % (self._service_name, str(ex)))
+        return 'aborted'
+
+    # Retrieve the response
+    try:
+        self._response = self._response_future.result()
+    except Exception as ex:
+        rospy.logerr("Exception when getting the response from service '%s': %s" % (self._service_name, str(ex)))
+        return 'aborted'
+
+    # Call response callback if it's set
+    # Existing code for response callback...
+    response_cb_outcome = None
+    if self._response_cb is not None:
+        try:
+            response_cb_outcome = self._response_cb(
+                    smach.Remapper(
+                            ud,
+                            self._response_cb_input_keys,
+                            self._response_cb_output_keys,
+                            []),
+                    self._response,
+                    *self._response_cb_args,
+                    **self._response_cb_kwargs)
+            if response_cb_outcome is not None and response_cb_outcome not in self.get_registered_outcomes():
+                rospy.logerr("Result callback for service "+self._service_name+", "+str(self._response_cb)+" was not registered with the response_cb_outcomes argument. The response callback returned '"+str(response_cb_outcome)+"' but the only registered outcomes are: "+str(self.get_registered_outcomes()))
+                return 'aborted'
+        except:
+            rospy.logerr("Could not execute response callback: "+traceback.format_exc())
+            return 'aborted'
+
+    if self._response_key is not None:
+        ud[self._response_key] = self._response
+
+    for key in self._response_slots:
+        ud[key] = getattr(self._response,key)
+
+    if response_cb_outcome is not None:
+        return response_cb_outcome
+
+    return 'succeeded'
+  
