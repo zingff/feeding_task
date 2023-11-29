@@ -3,17 +3,15 @@
 # Note: a finite state machine for feeding task
 # Note: name of the manipulator: sausage lip arm (SLA)
 
-# TODO List: 
-# √ concurrent sm for collision detection (cd is not always necessary)
-# √ add a joint planner in kmp 
-# √ modify the skewer action in a cb in food item selector 
-# √ add a loop for skewer task 
-# √ add simple cpe to replace the original one 
-# * modify the cd to be dynamic tuning mode
-# * add a function to check if a skewer is successful (pc)
+# Note: pre/ing/post skewer are implemented with planning and execution
+
+# TODO List: all done
+# . concurrent sm for collision detection (cd is not always necessary) \/
+# . add a joint planner in kmp \/
+# . modify the skewer action in a cb in food item selector \/
+# . add a loop for skewer task \/
 
 from email import message
-from re import I
 import anygrasp_generation
 import kortex_motion_planning
 from kortex_motion_planning.msg import JointPositions
@@ -59,9 +57,6 @@ outcomes_sm = [
     , 'normal'
     , 'collision_status'
     , 'collision_detection'
-    , 'move_to_pre_skewer_pose'
-    , 'move_to_skewer_pose'
-    , 'move_to_post_skewer_pose'
                ]
 
 
@@ -97,9 +92,6 @@ transition_sm = {
     , 'aborted': 'aborted'
     , 'collision_detected': 'aborted'
     , 'collision_detection': 'collision_detection'
-    , 'move_to_pre_skewer_pose': 'move_to_pre_skewer_pose'
-    , 'move_to_skewer_pose': 'move_to_skewer_pose'
-    , 'move_to_post_skewer_pose': 'move_to_post_skewer_pose'
 }
 
 
@@ -191,7 +183,6 @@ class StateOutputStyle:
     collision = '\033[1;38;5;123m'  # cyan
     collision2 = '\033[1;38;5;195m' # near white
     striking  = '\033[1;38;5;190m'
-    normal = '\033[38;5;152m'
   
   
 def success_loginfo(msg):
@@ -208,10 +199,6 @@ def striking_loginfo(msg):
     
 def collision_detected_loginfo(msg):
     rospy.loginfo(StateOutputStyle.collision + "Collision detected in state: "  + msg  + ", aborting..." + StateOutputStyle.default)
-
-
-def normal_loginfo(msg):
-    rospy.loginfo(StateOutputStyle.normal + msg + StateOutputStyle.default)
 
 
 def degrees2Radians(degrees):
@@ -314,7 +301,7 @@ def generic_userdata_state_callback(userdata, response, next_state_on_success, n
 def food_item_selector_callback(userdata, response):
     return generic_userdata_state_callback(userdata, 
                                            response, 
-                                           'move_to_pre_skewer_pose', 
+                                           'plan_to_pre_skewer_pose', 
                                            'aborted', 
                                            True)
 
@@ -326,11 +313,8 @@ def move_to_feeding_start_position_callback(userdata, response):
                                   'aborted')
 
 
-
-
-
 def plan_to_pre_skewer_pose_callback(userdata, response):
-  # rospy.loginfo("Received pre_skewer_pose in state plan_to_pre_skewer_pose: %s", str(userdata.pre_skewer_pose))
+  rospy.loginfo("Received pre_skewer_pose in state plan_to_pre_skewer_pose: %s", str(userdata.pre_skewer_pose))
   return generic_state_callback(userdata, 
                                 response, 
                                 'execute_to_pre_skewer_pose',
@@ -338,7 +322,7 @@ def plan_to_pre_skewer_pose_callback(userdata, response):
   
   
 def plan_to_skewer_pose_callback(userdata, response):
-  # rospy.loginfo("Received skewer_pose in state plan_to_skewer_pose: %s", str(userdata.skewer_pose))
+  rospy.loginfo("Received skewer_pose in state plan_to_skewer_pose: %s", str(userdata.skewer_pose))
   return generic_state_callback(userdata, 
                                 response, 
                                 'execute_to_skewer_pose',
@@ -346,7 +330,7 @@ def plan_to_skewer_pose_callback(userdata, response):
   
 
 def plan_to_post_skewer_pose_callback(userdata, response):
-  # rospy.loginfo("Received post_skewer_pose in state plan_to_post_skewer_pose: %s", str(userdata.post_skewer_pose))
+  rospy.loginfo("Received post_skewer_pose in state plan_to_post_skewer_pose: %s", str(userdata.post_skewer_pose))
   return generic_state_callback(userdata, 
                                 response, 
                                 'execute_to_post_skewer_pose',
@@ -354,7 +338,7 @@ def plan_to_post_skewer_pose_callback(userdata, response):
 
 
 def plan_to_feeding_pose_callback(userdata, response):
-  # rospy.loginfo("Received feeding_pose in state plan_to_feeding_pose: %s", str(userdata.pre_skewer_pose))
+  rospy.loginfo("Received feeding_pose in state plan_to_feeding_pose: %s", str(userdata.pre_skewer_pose))
   return generic_state_callback(userdata, 
                                 response, 
                                 'execute_to_feeding_pose',
@@ -501,10 +485,8 @@ class food_item_selector(smach_ros.ServiceState):
             skewer_pose.position.z = T_base_tool.translation.z
             skewer_pose.orientation = q_grasp
             userdata.skewer_pose = skewer_pose
-            # print("skewer_pose: ")
-            # print(userdata.skewer_pose)  
-            normal_loginfo("Skewer pose: ")
-            normal_loginfo(str(userdata.skewer_pose))           
+            print("skewer_pose: ")
+            print(userdata.skewer_pose)             
 
             
             for i, transform in enumerate(userdata.anygrasp_transforms):
@@ -549,6 +531,7 @@ class food_item_selector(smach_ros.ServiceState):
         return outcome
 
 
+
 class move_to_feeding_start_position(smach_ros.ServiceState):
     def __init__(self, target_positions_, input_keys_sm, outcomes_sm):
         super(move_to_feeding_start_position, self).__init__(
@@ -591,193 +574,9 @@ class move_to_feeding_start_position(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'move_to_feeding_start_position'
+            return 'aborted'
         
         return outcome
-
-
-def move_to_pre_skewer_pose_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'move_to_skewer_pose', 
-                                  'aborted')
-
-
-class move_to_pre_skewer_pose(smach_ros.ServiceState):
-    def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
-        smach_ros.ServiceState.__init__(
-          self, 
-          service_name=service_name,
-          service_spec=service_spec,
-          request_cb=self.request_cb,
-          request_cb_args=[userdata_key],
-          response_slots=['success'],
-          outcomes=outcomes,
-          input_keys=input_keys+[userdata_key],
-          response_cb=move_to_pre_skewer_pose_callback
-        )
-        self.userdata_key = userdata_key
-        
-    def request_cb(self, userdata, *args):
-        target_pose = getattr(userdata, self.userdata_key)
-        return kortex_motion_planning.srv.KortexSimpleCmpeRequest(target_pose)
-    def execute(self, userdata):
-        global collision_detected
-        collision_detected = False
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            global collision_detected
-            
-            def callback(msg):
-                global collision_detected
-                if msg.data:
-                    collision_detected = True
-                    collision_thread_stop.set()
-
-            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
-                rospy.sleep(0.1)
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(move_to_pre_skewer_pose, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        
-        if collision_detected:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            return 'move_to_pre_skewer_pose'
-        
-        return outcome
-
-
-
-def move_to_skewer_pose_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'move_to_post_skewer_pose', 
-                                  'aborted')
-
-
-class move_to_skewer_pose(smach_ros.ServiceState):
-    def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
-        smach_ros.ServiceState.__init__(
-          self, 
-          service_name=service_name,
-          service_spec=service_spec,
-          request_cb=self.request_cb,
-          request_cb_args=[userdata_key],
-          response_slots=['success'],
-          outcomes=outcomes,
-          input_keys=input_keys+[userdata_key],
-          response_cb=move_to_skewer_pose_callback
-        )
-        self.userdata_key = userdata_key
-        
-    def request_cb(self, userdata, *args):
-        target_pose = getattr(userdata, self.userdata_key)
-        return kortex_motion_planning.srv.KortexSimpleCmpeRequest(target_pose)
-      
-    def execute(self, userdata):
-        global collision_detected
-        collision_detected = False
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            global collision_detected
-            
-            def callback(msg):
-                global collision_detected
-                if msg.data:
-                    collision_detected = True
-                    collision_thread_stop.set()
-
-            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
-                rospy.sleep(0.1)
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(move_to_skewer_pose, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        
-        if collision_detected:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            return 'move_to_skewer_pose'
-        
-        return outcome
-
-
-def move_to_post_skewer_pose_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'move_to_feeding_initial_position', 
-                                  'aborted')
-
-
-class move_to_post_skewer_pose(smach_ros.ServiceState):
-    def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
-        smach_ros.ServiceState.__init__(
-          self, 
-          service_name=service_name,
-          service_spec=service_spec,
-          request_cb=self.request_cb,
-          request_cb_args=[userdata_key],
-          response_slots=['success'],
-          outcomes=outcomes,
-          input_keys=input_keys+[userdata_key],
-          response_cb=move_to_post_skewer_pose_callback
-        )
-        self.userdata_key = userdata_key
-        
-    def request_cb(self, userdata, *args):
-        target_pose = getattr(userdata, self.userdata_key)
-        return kortex_motion_planning.srv.KortexSimpleCmpeRequest(target_pose)
-      
-    def execute(self, userdata):
-        global collision_detected
-        collision_detected = False
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            global collision_detected
-            
-            def callback(msg):
-                global collision_detected
-                if msg.data:
-                    collision_detected = True
-                    collision_thread_stop.set()
-
-            rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown() and not collision_thread_stop.is_set():
-                rospy.sleep(0.1)
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(move_to_post_skewer_pose, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        
-        if collision_detected:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            return 'move_to_post_skewer_pose'
-        
-        return outcome
-
 
 class move_to_feeding_initial_position(smach_ros.ServiceState):
     def __init__(self, target_positions_, input_keys_sm, outcomes_sm):
@@ -821,13 +620,9 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'move_to_feeding_initial_position'
+            return 'aborted'
         
         return outcome
-
-
-
-
 
 class plan_to_pre_skewer_pose(smach_ros.ServiceState):
     def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
@@ -877,7 +672,7 @@ class plan_to_pre_skewer_pose(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'plan_to_pre_skewer_pose'
+            return 'aborted'
         
         return outcome
 
@@ -930,7 +725,7 @@ class plan_to_skewer_pose(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'plan_to_skewer_pose'
+            return 'aborted'
         
         return outcome
 
@@ -982,7 +777,7 @@ class plan_to_post_skewer_pose(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'plan_to_post_skewer_pose'
+            return 'aborted'
         
         return outcome
 
@@ -1030,7 +825,7 @@ class execute_to_pre_skewer_pose(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'plan_to_pre_skewer_pose'
+            return 'aborted'
         
         return outcome
  
@@ -1093,7 +888,7 @@ class execute_to_post_skewer_pose(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'plan_to_post_skewer_pose'
+            return 'aborted'
         
         return outcome    
         
@@ -1146,7 +941,7 @@ class plan_to_feeding_pose(smach_ros.ServiceState):
         if collision_detected:
             collision_detected_loginfo(self.__class__.__name__)
             outcome = 'aborted'
-            return 'plan_to_feeding_pose'
+            return 'aborted'
         
         return outcome
 
@@ -1203,8 +998,14 @@ def main():
     rospy.init_node('feeding_task_state_machine')
 
     sm = CustomStateMachine(outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
+    # cc = smach.Concurrence(
+    #   outcomes = outcomes_sm,
+    #   default_outcome = 'normal',
+    #   outcome_map={'collision_detection': {'collision_detection': 'collision_detection'}}
+    # )
 
     # Initialize necessary data in feeding task
+    # food_transfer
     feeding_pose = Pose()
     feeding_pose.position.x = -0.15135
     feeding_pose.position.y = 0.235484
@@ -1213,14 +1014,27 @@ def main():
     feeding_pose.orientation.y = -0.4914169
     feeding_pose.orientation.z = -0.604657
     feeding_pose.orientation.w = 0.4928685
+
+    target_pose_2 = Pose()  # deprecated
+    target_pose_2.position.x = -0.15135
+    target_pose_2.position.y = 0.235484
+    target_pose_2.position.z = 0.457796
+    target_pose_2.orientation.x = 0.3872724
+    target_pose_2.orientation.y = -0.4914169
+    target_pose_2.orientation.z = -0.604657
+    target_pose_2.orientation.w = 0.4928685
     
     feeding_initial_position = JointPositions()
     feeding_initial_position.joint_positions = [0.021247, -0.26079, 3.15111, -2.14524, 0.060838, -0.90679, 1.58046]
 
+
     # update_anygrasp = True
+    # collision_status = Value('b', False) 
     # rospy.Subscriber('/kortex_motion_planning/collision_detection', Bool, lambda data: collision_detection_callback(data, sm))
+    # collision_status = Value('b', False)  # Shared, thread-safe boolean
     # collision_subscriber = rospy.Subscriber('/kortex_motion_planning/collision_detection', Bool, collision_detection_callback, callback_args=(collision_status))
     
+
     sm.userdata.motion_plan = JointTrajectory()
     sm.userdata.update_anygrasp = True
     sm.userdata.success = False
@@ -1236,6 +1050,7 @@ def main():
     # Remap variables
     sm.userdata.feeding_pose = feeding_pose
     sm.userdata.feeding_start_position = feeding_initial_position
+    sm.userdata.target_pose_2 = target_pose_2
     sm.userdata.feeding_initial_position = feeding_initial_position
     # sm.userdata.update_anygrasp = update_anygrasp
     
@@ -1251,65 +1066,35 @@ def main():
                                , transitions=transition_sm
                                , remapping=remapping_sm)
 
-
-        smach.StateMachine.add('move_to_pre_skewer_pose',
-                              move_to_pre_skewer_pose('/kortex_simple_cartesian_motion_service',
-                                                      kortex_motion_planning.srv.KortexSimpleCmpe,
+ 
+        smach.StateMachine.add('plan_to_pre_skewer_pose',
+                              plan_to_pre_skewer_pose('/motion_planning_server',
+                                                      kortex_motion_planning.srv.GenerateKortexMotionPlan,
                                                       input_keys_sm,
                                                       outcomes_sm,
                                                       'pre_skewer_pose'),
                               transitions=transition_sm,
-                              remapping=remapping_sm)    
+                              remapping=remapping_sm) 
 
-
-        smach.StateMachine.add('move_to_skewer_pose',
-                              move_to_skewer_pose('/kortex_simple_cartesian_motion_service',
-                                                      kortex_motion_planning.srv.KortexSimpleCmpe,
+        
+        smach.StateMachine.add('plan_to_skewer_pose',
+                              plan_to_skewer_pose('/motion_planning_server',
+                                                      kortex_motion_planning.srv.GenerateKortexMotionPlan,
                                                       input_keys_sm,
                                                       outcomes_sm,
                                                       'skewer_pose'),
                               transitions=transition_sm,
-                              remapping=remapping_sm)    
+                              remapping=remapping_sm) 
         
 
-        smach.StateMachine.add('move_to_post_skewer_pose',
-                              move_to_post_skewer_pose('/kortex_simple_cartesian_motion_service',
-                                                      kortex_motion_planning.srv.KortexSimpleCmpe,
+        smach.StateMachine.add('plan_to_post_skewer_pose',
+                              plan_to_post_skewer_pose('/motion_planning_server',
+                                                      kortex_motion_planning.srv.GenerateKortexMotionPlan,
                                                       input_keys_sm,
                                                       outcomes_sm,
                                                       'post_skewer_pose'),
                               transitions=transition_sm,
-                              remapping=remapping_sm)   
-
- 
-        # smach.StateMachine.add('plan_to_pre_skewer_pose',
-        #                       plan_to_pre_skewer_pose('/motion_planning_server',
-        #                                               kortex_motion_planning.srv.GenerateKortexMotionPlan,
-        #                                               input_keys_sm,
-        #                                               outcomes_sm,
-        #                                               'pre_skewer_pose'),
-        #                       transitions=transition_sm,
-        #                       remapping=remapping_sm) 
-
-        
-        # smach.StateMachine.add('plan_to_skewer_pose',
-        #                       plan_to_skewer_pose('/motion_planning_server',
-        #                                               kortex_motion_planning.srv.GenerateKortexMotionPlan,
-        #                                               input_keys_sm,
-        #                                               outcomes_sm,
-        #                                               'skewer_pose'),
-        #                       transitions=transition_sm,
-        #                       remapping=remapping_sm) 
-        
-
-        # smach.StateMachine.add('plan_to_post_skewer_pose',
-        #                       plan_to_post_skewer_pose('/motion_planning_server',
-        #                                               kortex_motion_planning.srv.GenerateKortexMotionPlan,
-        #                                               input_keys_sm,
-        #                                               outcomes_sm,
-        #                                               'post_skewer_pose'),
-        #                       transitions=transition_sm,
-        #                       remapping=remapping_sm)         
+                              remapping=remapping_sm)         
 
 
         smach.StateMachine.add('plan_to_feeding_pose',
@@ -1328,27 +1113,27 @@ def main():
                                , transitions=transition_sm
                                , remapping=remapping_sm)
 
-        # smach.StateMachine.add('execute_to_pre_skewer_pose'
-        #                        , execute_to_pre_skewer_pose('motion_plan'
-        #                                          , input_keys_sm
-        #                                          , outcomes_sm)
-        #                        , transitions=transition_sm
-        #                        , remapping=remapping_sm)
+        smach.StateMachine.add('execute_to_pre_skewer_pose'
+                               , execute_to_pre_skewer_pose('motion_plan'
+                                                 , input_keys_sm
+                                                 , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
         
-        # smach.StateMachine.add('execute_to_skewer_pose'
-        #                        , execute_to_skewer_pose('motion_plan'
-        #                                          , input_keys_sm
-        #                                          , outcomes_sm)
-        #                        , transitions=transition_sm
-        #                        , remapping=remapping_sm)
+        smach.StateMachine.add('execute_to_skewer_pose'
+                               , execute_to_skewer_pose('motion_plan'
+                                                 , input_keys_sm
+                                                 , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
         
 
-        # smach.StateMachine.add('execute_to_post_skewer_pose'
-        #                        , execute_to_post_skewer_pose('motion_plan'
-        #                                          , input_keys_sm
-        #                                          , outcomes_sm)
-        #                        , transitions=transition_sm
-        #                        , remapping=remapping_sm)
+        smach.StateMachine.add('execute_to_post_skewer_pose'
+                               , execute_to_post_skewer_pose('motion_plan'
+                                                 , input_keys_sm
+                                                 , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm)
         
         
         smach.StateMachine.add('execute_to_feeding_pose'
@@ -1365,6 +1150,17 @@ def main():
                                                  , outcomes_sm)
                                , transitions=transition_sm
                                , remapping=remapping_sm)
+        
+        
+        # with cc:
+        #   smach.Concurrence.add('collision_detection'
+        #                         , collision_detection(
+        #                           outcomes_sm,
+        #                           input_keys_sm,
+        #                           input_keys_sm
+        #                         ))
+          
+        # smach.StateMachine.add('collision_detection', cc, transitions=transition_sm)
 
     # Execute SMACH tree
     outcome = sm.execute()

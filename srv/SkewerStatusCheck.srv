@@ -1,0 +1,7 @@
+# Request
+bool skewer_checker_flag
+
+---
+# Response
+bool skewer_status
+int32 point_number
