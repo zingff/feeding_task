@@ -49,11 +49,23 @@ find_package(tesseract_command_language REQUIRED)
 find_package(tesseract_task_composer REQUIRED)
 find_package(tesseract_kinematics REQUIRED)
 
-catkin_package(
-)
+# catkin_package(
+# )
 
 include_directories(include
   ${catkin_INCLUDE_DIRS}
+)
+
+add_service_files(
+  FILES
+  SkewerStatusCheck.srv
+)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+catkin_package(
+  CATKIN_DEPENDS message_runtime
 )
 
 # Single food acquisition test
