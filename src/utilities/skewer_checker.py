@@ -1,4 +1,5 @@
 #! /home/zing/anaconda3/envs/sam/bin/python
+
 import rospy
 import open3d
 from sensor_msgs.msg import PointCloud2
@@ -7,6 +8,9 @@ from ctypes import *
 import numpy as np
 import time
 from feeding_task.srv import SkewerStatusCheck, SkewerStatusCheckResponse
+
+# TODO: just use the most simple way to check, remove point cloud conversion
+# TODO: since it is time-consuming
 
 class StateOutputStyle:
     normal = '\033[1;38;5;189m'  # light purple
@@ -17,6 +21,7 @@ class StateOutputStyle:
 
 def normal_loginfo(msg):
     rospy.loginfo(StateOutputStyle.normal + msg + StateOutputStyle.default)
+
 
 def success_loginfo(msg):
     rospy.loginfo(StateOutputStyle.success + msg + StateOutputStyle.default)
@@ -32,45 +37,41 @@ def convert_rgbUint32_to_tuple(rgb_uint32):
         (rgb_uint32 & 0x0000ff00) >> 8,
         (rgb_uint32 & 0x000000ff)
     )
+    
+    
 def convert_rgbFloat_to_tuple(rgb_float):
     return convert_rgbUint32_to_tuple(
         int(cast(pointer(c_float(rgb_float)), POINTER(c_uint32)).contents.value)
     )
 
+
 def convertCloudFromRosToOpen3d(ros_cloud):
-    # get cloud data from ros_cloud
     field_names = [field.name for field in ros_cloud.fields]
     cloud_data = list(pc2.read_points(ros_cloud, skip_nans=False, field_names=field_names))
 
-    # check empty
     open3d_cloud = open3d.geometry.PointCloud()
     if len(cloud_data) == 0:
         print("Converting an empty cloud")
         return None
 
-    # set open3d_cloud
     if "rgb" in field_names:
-        IDX_RGB_IN_FIELD = 3  # x, y, z, rgb
+        IDX_RGB_IN_FIELD = 3
+        xyz = [(x, y, z) for x, y, z, rgb in cloud_data]
 
-        # get xyz
-        xyz = [(x, y, z) for x, y, z, rgb in cloud_data]  # (why cannot put this line below rgb?)
-
-        # get rgb
-        # check whether int or float
-        if type(cloud_data[0][IDX_RGB_IN_FIELD]) == float:  # if float (from pcl::toROSMsg)
+        if type(cloud_data[0][IDX_RGB_IN_FIELD]) == float:  
             rgb = [convert_rgbFloat_to_tuple(rgb) for x, y, z, rgb in cloud_data]
         else:
             rgb = [convert_rgbUint32_to_tuple(rgb) for x, y, z, rgb in cloud_data]
 
-        # combine
         open3d_cloud.points = open3d.utility.Vector3dVector(np.array(xyz))
         open3d_cloud.colors = open3d.utility.Vector3dVector(np.array(rgb) / 255.0)
     else:
-        xyz = [(x, y, z) for x, y, z in cloud_data]  # get xyz
+        xyz = [(x, y, z) for x, y, z in cloud_data]
         open3d_cloud.points = open3d.utility.Vector3dVector(np.array(xyz))
 
     # return
     return open3d_cloud
+
 
 def process_point_cloud(point_cloud, remove_outlier=True):
     cloud = convertCloudFromRosToOpen3d(point_cloud)
@@ -85,9 +86,8 @@ def process_point_cloud(point_cloud, remove_outlier=True):
     colors_y = colors[:, 1].reshape(image_shape)
     colors_z = colors[:, 2].reshape(image_shape)
 
-    # remove outlier
     if remove_outlier:
-        mask = (points_z > 0.26) & (points_z < 0.32)
+        mask = (points_z > 0.28) & (points_z < 0.34)
         points = np.stack([points_x, points_y, points_z], axis=-1)
         colors = np.stack([colors_x, colors_y, colors_z], axis=-1)
         points = points[mask].astype(np.float32)
@@ -96,8 +96,9 @@ def process_point_cloud(point_cloud, remove_outlier=True):
 
     return points, colors, point_number
 
-def visualize_prediction_result(points, colors):
 
+# deprecated, for debugging
+def visualize_prediction_result(points, colors):
     cloud_transform = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
     cloud = open3d.geometry.PointCloud()
     cloud.points = open3d.utility.Vector3dVector(points)

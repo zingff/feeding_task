@@ -1,0 +1,5 @@
+<launch>
+    <group >
+        <node pkg="feeding_task" name="skewer_checker" type="skewer_checker.py" output="screen" required="true"/>
+    </group>  
+</launch>
