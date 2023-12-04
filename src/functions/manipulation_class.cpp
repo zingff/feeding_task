@@ -273,7 +273,8 @@ void Manipulation::reach_handle()
   // initial position
   getCurrentState();
   ROS_INFO("Moving to bowl grasp initial position");
-  setJointGroup(1.38348, 0.467969, 3.13848, 4.03808 - 6.28, 5.9657, 1.08215, 1.69044);
+  // setJointGroup(1.38348, 0.467969, 3.13848, 4.03808 - 6.28, 5.9657, 1.08215, 1.69044);
+  setJointGroup(1.01126, 0.562948, 3.06348, 4.26766 - 6.28, 5.50453, 1.10276, 0.398962);
   // setJointGroup(0.043, -0.1824, -0.0133, 2.208, -0.0188, 0.7828, -1.524);
   move(joint_group_positions);
   ros::Duration(2.0).sleep();
@@ -344,7 +345,7 @@ void Manipulation::reach_handle()
 
   close_gripper();
 
-  this->position.y += 0.20;  
+  this->position.y += 0.30;  
   set_target_pose();
   plan_pose_goal();
   this->move_group_ptr->move();

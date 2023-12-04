@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1
+        - /TF1/Frames1
         - /TF1/Tree1
         - /PointCloud22
       Splitter Ratio: 0.596069872379303
@@ -192,6 +193,16 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        anygrasp/grasp_0:
+          Value: true
+        anygrasp/grasp_1:
+          Value: false
+        anygrasp/grasp_2:
+          Value: false
+        anygrasp/grasp_3:
+          Value: false
+        anygrasp/grasp_4:
+          Value: false
         base_link:
           Value: false
         bracelet_link:
@@ -251,6 +262,16 @@ Visualization Manager:
       Tree:
         world:
           base_link:
+            anygrasp/grasp_0:
+              {}
+            anygrasp/grasp_1:
+              {}
+            anygrasp/grasp_2:
+              {}
+            anygrasp/grasp_3:
+              {}
+            anygrasp/grasp_4:
+              {}
             shoulder_link:
               half_arm_1_link:
                 half_arm_2_link:
@@ -375,7 +396,7 @@ Visualization Manager:
       Marker Topic: /tesseract/display_tool_path
       Name: MarkerArray
       Namespaces:
-        {}
+        tesseract/segment_0/poses: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -422,9 +443,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.52520352602005
+      Pitch: 0.2852036952972412
       Target Frame: <Fixed Frame>
-      Yaw: 1.6008700132369995
+      Yaw: 0.6808703541755676
     Saved: ~
 Window Geometry:
   Displays:
@@ -445,4 +466,4 @@ Window Geometry:
     collapsed: true
   Width: 1538
   X: 132
-  Y: 192
+  Y: 155

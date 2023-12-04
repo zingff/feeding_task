@@ -5,30 +5,16 @@
 
 # TODO List: 
 # √ concurrent sm for collision detection (cd is not always necessary)
-# √ add a joint planner in skmp 
+# √ add a joint planner in kmp 
 # √ modify the skewer action in a cb in food item selector 
 # √ add a loop for skewer task 
 # √ add simple cpe to replace the original one 
-# * modify the cd to be dynamic tuning/adaptive mode
+# * modify the cd to be dynamic tuning mode
 # √ add a function to check if a skewer is successful (pc)
 # √ update the collision detection logic in fsm
-# √ modify skewer mpe
+# * modify skewer mpe
 # √ update the collision detection logic in both fsm and cd
-# * add pre states for feeding task:
-  # √ get utensil
-  # √ bowl upright transfer
-  # √ grasp bowl
-  # √ bowl grasp generator
-  # * door open
-    # * move to door open initial position/pose
-    # * grasp door handle
-    # * open gripper for door handle grasping
-    # . qr recognition, to remove, leave it bg
-    # * move to door handle pose
-    # * door open
-    # * move to post door open position/pose
-# * add force sensing for skewer state
-# * add functional trigger for feeding task
+# * add pre states for feeding task
 
 
 
@@ -57,10 +43,9 @@ from std_msgs.msg import Bool, Empty
 import threading
 import kortex_driver.srv
 import kortex_driver.msg
-import numpy as np
 
 
-collision_detected = False  # deprecated
+collision_detected = False
 COLLISION_DETECTION_TOPIC = "/kortex_motion_planning/collision_detection"
 STOP_SERVICE = "/base/stop"
 
@@ -81,27 +66,14 @@ outcomes_sm = [
     , 'move_to_feeding_initial_position'
     , 'plan_to_feeding_pose'
     , 'execute_to_feeding_pose'
-    , 'collision_detected'  # deprecated
-    , 'normal'  # deprecated
-    , 'collision_status'  # deprecated
-    , 'collision_detection'  # deprecated
+    , 'collision_detected'
+    , 'normal'
+    , 'collision_status'
+    , 'collision_detection'
     , 'move_to_pre_skewer_pose'
     , 'move_to_skewer_pose'
     , 'move_to_post_skewer_pose'
     , 'skewer_status_check'
-    
-    , 'move_to_bowl_transfer_initial_position'  # todo: modify to move_to_bowl_grasping_initial_position
-    , 'open_gripper_for_bowl_grasping'
-    , 'bowl_grasp_generator'
-    , 'move_to_bowl_handle_pose'
-    , 'grasp_bowl_handle'
-    , 'move_to_bowl_transfer_post_position'  # todo: modify to # todo: modify to move_to_bowl_grasping_post_position or move_to_bowl_transfer_initial_position
-
-    , 'plan_for_bowl_upright_transfer'
-    , 'execution_for_bowl_upright_transfer'
-    , 'release_bowl'
-    , 'get_utensil'
-        
                ]
 
 
@@ -118,15 +90,12 @@ input_keys_sm = [
     , 'post_skewer_pose'
     , 'feeding_pose'
     , 'collision_status'
-    , 'bowl_placement_pose'
-    , 'bowl_handle_pose'
                  ]
 
 
 transition_sm = {
-    
-    # motion planning part for feeding cycle
-      'move_to_feeding_start_position': 'move_to_feeding_start_position'
+    'food_item_selector': 'food_item_selector'
+    , 'move_to_feeding_start_position': 'move_to_feeding_start_position'
     , 'plan_to_pre_skewer_pose': 'plan_to_pre_skewer_pose'
     , 'plan_to_skewer_pose': 'plan_to_skewer_pose'
     , 'plan_to_post_skewer_pose': 'plan_to_post_skewer_pose'
@@ -136,35 +105,13 @@ transition_sm = {
     , 'move_to_feeding_initial_position' : 'move_to_feeding_initial_position'
     , 'plan_to_feeding_pose': 'plan_to_feeding_pose'
     , 'execute_to_feeding_pose': 'execute_to_feeding_pose'
-    
-    # deprecated/not used yet
     , 'aborted': 'aborted'
     , 'collision_detected': 'aborted'
     , 'collision_detection': 'collision_detection'
-    
-    # skewer food
-    , 'food_item_selector': 'food_item_selector'
     , 'move_to_pre_skewer_pose': 'move_to_pre_skewer_pose'
     , 'move_to_skewer_pose': 'move_to_skewer_pose'
     , 'move_to_post_skewer_pose': 'move_to_post_skewer_pose'
     , 'skewer_status_check': 'skewer_status_check'
-    
-    # grasp bowl
-    , 'move_to_bowl_transfer_initial_position': 'move_to_bowl_transfer_initial_position'
-    , 'open_gripper_for_bowl_grasping': 'open_gripper_for_bowl_grasping'
-    , 'bowl_grasp_generator': 'bowl_grasp_generator'
-    , 'move_to_bowl_handle_pose': 'move_to_bowl_handle_pose'
-    , 'grasp_bowl_handle': 'grasp_bowl_handle'
-    , 'move_to_bowl_transfer_post_position': 'move_to_bowl_transfer_post_position'    
-    
-    # transfer bowl 
-    , 'plan_for_bowl_upright_transfer': 'plan_for_bowl_upright_transfer'
-    , 'execution_for_bowl_upright_transfer': 'execution_for_bowl_upright_transfer'
-    , 'release_bowl': 'release_bowl'
-    
-    # get utensil
-    , 'get_utensil': 'get_utensil'
-    
 }
 
 
@@ -180,12 +127,7 @@ remapping_sm = {
     , 'pre_skewer_pose': 'pre_skewer_pose'
     , 'skewer_pose': 'skewer_pose'
     , 'feeding_pose': 'feeding_pose'
-    , 'bowl_placement_pose': 'bowl_placement_pose'
-    , 'bowl_handle_pose': 'bowl_handle_pose'
 }
-
-def normalize_quaternion(quaternion):
-    return quaternion / np.linalg.norm(quaternion)
 
 
 def transform_to_matrix(transform):
@@ -344,717 +286,85 @@ def generic_userdata_state_callback(userdata, response, next_state_on_success, n
         return next_state_on_failure
 
 
-
-# Define states
-def move_to_bowl_transfer_initial_position_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'open_gripper_for_bowl_grasping', 
-                                  'aborted')
-
-
-class move_to_bowl_transfer_initial_position(smach_ros.ServiceState):
-    def __init__(self
-                 , target_position
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
-        super(move_to_bowl_transfer_initial_position, self).__init__(
-            service_name='/kortex_simple_joint_motion_service',
-            service_spec=kortex_motion_planning.srv.KortexSimpleJmpe,
-            request=kortex_motion_planning.srv.KortexSimpleJmpeRequest(
-              target_position),
-            response_slots=['success'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=move_to_bowl_transfer_initial_position_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(move_to_bowl_transfer_initial_position, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(move_to_bowl_transfer_initial_position, self).execute(userdata)
-          
-      return outcome
-
-
-def open_gripper_for_bowl_grasping_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'bowl_grasp_generator', 
-                                  'aborted')
-
-
-# . update cd
-class open_gripper_for_bowl_grasping(smach_ros.ServiceState):
-    def __init__(self
-                 , target_position
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
-        super(open_gripper_for_bowl_grasping, self).__init__(
-            service_name='/kortex_gripper_command_service',
-            service_spec=kortex_motion_planning.srv.SendGripperCommand,
-            request=kortex_motion_planning.srv.SendGripperCommandRequest(
-              target_position),
-            response_slots=['success'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=open_gripper_for_bowl_grasping_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(open_gripper_for_bowl_grasping, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(open_gripper_for_bowl_grasping, self).execute(userdata)
-          
-      return outcome
-
-
-def bowl_grasp_generator_callback(userdata, response):
-    return generic_userdata_state_callback(userdata, 
-                                           response, 
-                                           'move_to_bowl_handle_pose', 
-                                           'aborted', 
-                                           True)
-    
-
-class bowl_grasp_generator(smach_ros.ServiceState):
-    def __init__(self
-                 , request_key_
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
-        super(bowl_grasp_generator, self).__init__(
-            service_name='/bowl_grasp_generator',
-            service_spec=anygrasp_generation.srv.AnyGraspGeneration,
-            # request=anygrasp_generation.srv.AnyGraspGenerationRequest(update_anygrasp),
-            request_key=request_key_,
-            response_slots=['anygrasp_transforms', 'success'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=bowl_grasp_generator_callback
-        )
-        self.anygrasp_tf_broadcaster = tf2_ros.TransformBroadcaster()
-        self.grasp_namespace = 'anygrasp'
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-
-    def execute(self, userdata):
-        outcome = super(bowl_grasp_generator, self).execute(userdata)
-        # if self.apply_collision_detection:
-        if userdata.success:
-            # todo: add grasp selection logic
-            userdata.anygrasp_transform = userdata.anygrasp_transforms[0]  # * T_base_grasp
-            # print('The best grasp from AnyGrasp: ')
-            # print(userdata.anygrasp_transform)
-            # TODO: to delete
-            q_base_grasp = Quaternion()
-            q_base_grasp.x = 0.7071068
-            q_base_grasp.y = 0.7071068
-            q_base_grasp.z = 0 
-            q_base_grasp.w = 0 
-            
-            # Grasp pose
-            grasp_orientation = Vector3()
-            grasp_orientation.x = degrees2Radians(0)
-            grasp_orientation.y = degrees2Radians(-90)
-            grasp_orientation.z = degrees2Radians(90)
-            grasp_quaternion_tf = tf.transformations.quaternion_from_euler(
-              grasp_orientation.x, 
-              grasp_orientation.y, 
-              grasp_orientation.z)
-            q_grasp = Quaternion()
-            attributes = ['x', 'y', 'z', 'w']
-            for attr, value in zip(attributes, grasp_quaternion_tf):
-                setattr(q_grasp, attr, value)
-                
-            pitch_angle = np.pi / 2
-            pitch_rotation = tf.transformations.euler_matrix(0, pitch_angle, 0, 'sxyz')[:3, :3]
-            yaw_angle =  - np.pi / 2
-            yaw_rotation = tf.transformations.euler_matrix(0, 0, yaw_angle, 'sxyz')[:3, :3]                
-            
-            # T_base_grasp
-            T_base_grasp = Transform()
-            T_base_grasp = userdata.anygrasp_transform 
-            q_base_grasp = T_base_grasp.rotation
-            print('q_base_grasp', q_base_grasp)
-            
-            quaternion_list = [q_base_grasp.x, q_base_grasp.y, q_base_grasp.z, q_base_grasp.w]
-            R_base_grasp = tf.transformations.quaternion_matrix(quaternion_list)[:3, :3]
-            print('R_base_grasp', R_base_grasp)
-            
-            R_base_grasp = np.dot(np.dot(R_base_grasp, pitch_rotation), yaw_rotation)
-            
-            width_offset = np.array([0, 0, 0.02])
-            p_base_grasp = Vector3()
-            p_base_grasp = T_base_grasp.translation
-            translation_list = [p_base_grasp.x, p_base_grasp.y, p_base_grasp.z]
-            p_base_grasp = np.dot(R_base_grasp, translation_list) + width_offset                
-            # print("T_base_grasp: ", T_base_grasp)    
-                        
-            bowl_handle_pose = Pose()
-            bowl_handle_pose.orientation = q_grasp
-            bowl_handle_pose.position.x = T_base_grasp.translation.x
-            bowl_handle_pose.position.y = T_base_grasp.translation.y + 0.02
-            bowl_handle_pose.position.z = T_base_grasp.translation.z  
-            
-            userdata.bowl_handle_pose = bowl_handle_pose  
-            print("bowl_handle_pose")     
-            print(userdata.bowl_handle_pose)     
-
-            for i, transform in enumerate(userdata.anygrasp_transforms):
-                anygrasp_tf_msg = tf2_ros.TransformStamped()
-                anygrasp_tf_msg.header.stamp = rospy.Time.now()
-                anygrasp_tf_msg.header.frame_id = 'base_link'
-                anygrasp_tf_msg.child_frame_id = f'{self.grasp_namespace}/grasp_{i}'
-                anygrasp_tf_msg.transform.translation = transform.translation
-                anygrasp_tf_msg.transform.rotation = transform.rotation
-                self.anygrasp_tf_broadcaster.sendTransform(anygrasp_tf_msg)
-        
-        return outcome
-
-
-
-def move_to_bowl_handle_pose_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'grasp_bowl_handle', 
-                                  'aborted')
-
-
-# . update cd
-class move_to_bowl_handle_pose(smach_ros.ServiceState):
-    def __init__(self
-                 , service_name
-                 , service_spec
-                 , input_keys
-                 , outcomes
-                 , userdata_key
-                 , apply_collision_detection = False):
-        smach_ros.ServiceState.__init__(
-          self, 
-          service_name=service_name,
-          service_spec=service_spec,
-          request_cb=self.request_cb,
-          request_cb_args=[userdata_key],
-          response_slots=['success'],
-          outcomes=outcomes,
-          input_keys=input_keys+[userdata_key],
-          response_cb=move_to_bowl_handle_pose_callback
-        )
-        self.userdata_key = userdata_key
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def request_cb(self, userdata, *args):
-        target_pose = getattr(userdata, self.userdata_key)
-        return kortex_motion_planning.srv.KortexSimpleCmpeRequest(target_pose)
-
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(move_to_bowl_handle_pose, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(move_to_bowl_handle_pose, self).execute(userdata)
-          
-      return outcome      
-
-
-def grasp_bowl_handle_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'move_to_bowl_transfer_post_position', 
-                                  'aborted')
-
-
-# . update cd
-class grasp_bowl_handle(smach_ros.ServiceState):
-    def __init__(self
-                 , target_position
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
-        super(grasp_bowl_handle, self).__init__(
-            service_name='/kortex_gripper_command_service',
-            service_spec=kortex_motion_planning.srv.SendGripperCommand,
-            request=kortex_motion_planning.srv.SendGripperCommandRequest(
-              target_position),
-            response_slots=['success'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=grasp_bowl_handle_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(grasp_bowl_handle, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(grasp_bowl_handle, self).execute(userdata)
-          
-      return outcome
-
-
-
-
-def move_to_bowl_transfer_post_position_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'plan_for_bowl_upright_transfer', 
-                                  'aborted')
-
-
-class move_to_bowl_transfer_post_position(smach_ros.ServiceState):
-    def __init__(self
-                 , target_position
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
-        super(move_to_bowl_transfer_post_position, self).__init__(
-            service_name='/kortex_simple_joint_motion_service',
-            service_spec=kortex_motion_planning.srv.KortexSimpleJmpe,
-            request=kortex_motion_planning.srv.KortexSimpleJmpeRequest(
-              target_position),
-            response_slots=['success'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=move_to_bowl_transfer_post_position_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(move_to_bowl_transfer_post_position, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(move_to_bowl_transfer_post_position, self).execute(userdata)
-          
-      return outcome
-
-
-def plan_for_bowl_upright_transfer_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'execution_for_bowl_upright_transfer',
-                                'plan_for_bowl_upright_transfer')
-
-
-# . update cd
-class plan_for_bowl_upright_transfer(smach_ros.ServiceState):
-    def __init__(self
-                 , service_name
-                 , service_spec
-                 , input_keys
-                 , outcomes
-                 , userdata_key
-                 , apply_collision_detection = False):
-        smach_ros.ServiceState.__init__(
-            self,
-            service_name=service_name,
-            service_spec=service_spec,
-            request_cb=self.request_cb,
-            request_cb_args=[userdata_key],
-            response_slots=['motion_plan', 'success', 'message'],
-            outcomes=outcomes,
-            input_keys=input_keys + [userdata_key],
-            response_cb=plan_for_bowl_upright_transfer_callback
-        )
-        self.userdata_key = userdata_key
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def request_cb(self, userdata, *args):
-          target_pose = getattr(userdata, self.userdata_key)
-          return kortex_motion_planning.srv.GenerateKortexMotionPlanRequest(target_pose) 
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(plan_for_bowl_upright_transfer, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return 'plan_for_bowl_upright_transfer'
-      else:
-        outcome = super(plan_for_bowl_upright_transfer, self).execute(userdata)
-          
-      return outcome      
-
-
-def execution_for_bowl_upright_transfer_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'release_bowl',
-                                'execution_for_bowl_upright_transfer') 
-
-
-# .update cd 
-class execution_for_bowl_upright_transfer(smach_ros.ServiceState):
-    def __init__(self
-                 , request_key_
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collsion_detection = False):
-        super(execution_for_bowl_upright_transfer, self).__init__(
-            service_name='/motion_execution_server',
-            service_spec=kortex_motion_planning.srv.ExecuteMotionPlan,
-            request_key=request_key_,
-            response_slots=['success', 'message'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=execution_for_bowl_upright_transfer_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collsion_detection   
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(execution_for_bowl_upright_transfer, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return 'execution_for_bowl_upright_transfer'
-      else:
-        outcome = super(execution_for_bowl_upright_transfer, self).execute(userdata)
-          
-      return outcome
-
-
-def release_bowl_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'get_utensil', 
-                                  'aborted')
-
-
-# . update cd
-class release_bowl(smach_ros.ServiceState):
-    def __init__(self
-                 , target_position
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
-        super(release_bowl, self).__init__(
-            service_name='/kortex_gripper_command_service',
-            service_spec=kortex_motion_planning.srv.SendGripperCommand,
-            request=kortex_motion_planning.srv.SendGripperCommandRequest(
-              target_position),
-            response_slots=['success'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=release_bowl_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(release_bowl, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(release_bowl, self).execute(userdata)
-          
-      return outcome
-
-
 def food_item_selector_callback(userdata, response):
     return generic_userdata_state_callback(userdata, 
                                            response, 
                                            'move_to_pre_skewer_pose', 
                                            'aborted', 
                                            True)
-    
+
+
+def move_to_feeding_start_position_callback(userdata, response):
+    return generic_state_callback(userdata, 
+                                  response, 
+                                  'food_item_selector', 
+                                  'aborted')
+
+
+def plan_to_pre_skewer_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'execute_to_pre_skewer_pose',
+                                'plan_to_pre_skewer_pose')
+  
+  
+def plan_to_skewer_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'execute_to_skewer_pose',
+                                'plan_to_skewer_pose')
+  
+
+def plan_to_post_skewer_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'execute_to_post_skewer_pose',
+                                'plan_to_post_skewer_pose')
+
+
+def plan_to_feeding_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'execute_to_feeding_pose',
+                                'plan_to_feeding_pose')
+
+ 
+def execute_to_pre_skewer_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'plan_to_skewer_pose',
+                                'plan_to_pre_skewer_pose')
+  
+def execute_to_skewer_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'move_to_feeding_initial_position',
+                                'plan_to_skewer_pose')
+
+
+def execute_to_post_skewer_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'move_to_feeding_initial_position',
+                                'plan_to_post_skewer_pose') 
+
+ 
+def execute_to_feeding_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'move_to_feeding_start_position',
+                                'plan_to_feeding_pose') 
+
+ 
+def move_to_feeding_initial_position_callback(userdata, response):
+    return generic_state_callback(userdata, 
+                                  response, 
+                                  'skewer_status_check', 
+                                  'aborted') 
+  
 
 class food_item_selector(smach_ros.ServiceState):
-    def __init__(self
-                 , request_key_
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
+    def __init__(self, request_key_, input_keys_sm, outcomes_sm):
         super(food_item_selector, self).__init__(
             service_name='/grasp_generator',
             service_spec=anygrasp_generation.srv.AnyGraspGeneration,
@@ -1068,12 +378,10 @@ class food_item_selector(smach_ros.ServiceState):
         )
         self.anygrasp_tf_broadcaster = tf2_ros.TransformBroadcaster()
         self.grasp_namespace = 'anygrasp'
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
 
     def execute(self, userdata):
         outcome = super(food_item_selector, self).execute(userdata)
-        # if self.apply_collision_detection:
+
         if userdata.success:
             userdata.anygrasp_transform = userdata.anygrasp_transforms[0]
             # print('The best grasp from AnyGrasp: ')
@@ -1088,8 +396,8 @@ class food_item_selector(smach_ros.ServiceState):
             grasp_orientation.y = degrees2Radians(0)
             grasp_orientation.z = degrees2Radians(90)
             grasp_quaternion_tf = tf.transformations.quaternion_from_euler(grasp_orientation.x, 
-                                                              grasp_orientation.y, 
-                                                              grasp_orientation.z)
+                                                               grasp_orientation.y, 
+                                                               grasp_orientation.z)
             q_grasp = Quaternion()
             # q_grasp.x = grasp_quaternion_tf[0]
             # q_grasp.y = grasp_quaternion_tf[1]
@@ -1178,90 +486,37 @@ class food_item_selector(smach_ros.ServiceState):
                 self.anygrasp_tf_broadcaster.sendTransform(anygrasp_tf_msg)
                 
         # global collision_detected
+        # collision_detected = False
+        # collision_thread_stop = threading.Event()
+
+        # def collision_detection():
+        #     global collision_detected
+            
+        #     def callback(msg):
+        #         global collision_detected
+        #         if msg.data:
+        #             collision_detected = True
+        #             collision_thread_stop.set()
+
+        #     rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+        #     while not rospy.is_shutdown() and not collision_thread_stop.is_set():
+        #         rospy.sleep(0.1)
+
+        # collision_thread = threading.Thread(target=collision_detection)
+        # collision_thread.start()
+
+        # outcome = super(food_item_selector, self).execute(userdata)
+
+        # collision_thread_stop.set()
+        # collision_thread.join()
+        
+        # if collision_detected:
+        #     collision_detected_loginfo(self.__class__.__name__)
+        #     outcome = 'aborted'
+        #     return 'aborted'
         
         return outcome
-
-
-def get_utensil_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'move_to_feeding_start_position', 
-                                  'aborted')
-
-
-class get_utensil(smach_ros.ServiceState):
-    def __init__(self
-                 , get_utensil_flag
-                 , holder_position
-                 , utensil_position
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False):
-        super(get_utensil, self).__init__(
-            service_name='/kortex_get_utensil_service',
-            service_spec=kortex_motion_planning.srv.GetUtensil,
-            request=kortex_motion_planning.srv.GetUtensilRequest(
-              get_utensil_flag
-              , holder_position
-              , utensil_position),
-            response_slots=['success'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=get_utensil_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(get_utensil, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(get_utensil, self).execute(userdata)
-          
-      return outcome
-
-
-def move_to_feeding_start_position_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'food_item_selector', 
-                                  'aborted')
 
 
 # . update cd
@@ -1441,15 +696,8 @@ def move_to_post_skewer_pose_callback(userdata, response):
                                   'aborted')
 
 
-# . update cd
 class move_to_post_skewer_pose(smach_ros.ServiceState):
-    def __init__(self
-                 , service_name
-                 , service_spec
-                 , input_keys
-                 , outcomes
-                 , userdata_key
-                 , apply_collision_detection = False):
+    def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
         smach_ros.ServiceState.__init__(
           self, 
           service_name=service_name,
@@ -1462,62 +710,10 @@ class move_to_post_skewer_pose(smach_ros.ServiceState):
           response_cb=move_to_post_skewer_pose_callback
         )
         self.userdata_key = userdata_key
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
         
     def request_cb(self, userdata, *args):
         target_pose = getattr(userdata, self.userdata_key)
         return kortex_motion_planning.srv.KortexSimpleCmpeRequest(target_pose)
-
-    def execute(self, userdata):
-      if self.apply_collision_detection:
-        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-        collision_thread_stop = threading.Event()
-
-        def collision_detection():
-            
-            def callback(msg):
-                if msg.data:
-                    stop_client(kortex_driver.msg.Empty())
-                    stop_loginfo()
-                    self.collision_status = True
-                    collision_thread_stop.set()
-
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
-
-            while not rospy.is_shutdown():
-                if collision_thread_stop.is_set():
-                  break
-                rospy.sleep(0.1)
-                
-            subscriber.unregister()
-            normal_loginfo("Collision detection thread terminated.")
-
-        collision_thread = threading.Thread(target=collision_detection)
-        collision_thread.start()
-
-        outcome = super(move_to_post_skewer_pose, self).execute(userdata)
-
-        collision_thread_stop.set()
-        collision_thread.join()
-        normal_loginfo("Collision detection thread joined successfully.")
-        
-        if self.collision_status:
-            collision_detected_loginfo(self.__class__.__name__)
-            outcome = 'aborted'
-            self.collision_status = False
-            return str(self.__class__.__name__)
-      else:
-        outcome = super(move_to_post_skewer_pose, self).execute(userdata)
-          
-      return outcome  
-
-
-def move_to_feeding_initial_position_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'skewer_status_check', 
-                                  'aborted') 
 
 
 # . update cd
@@ -1583,7 +779,6 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
           
       return outcome  
 
-
 def skewer_status_check_callback(userdata, response):
     return state_skewer_status_check_callback(userdata, 
                                   response, 
@@ -1636,13 +831,6 @@ class skewer_status_check(smach_ros.ServiceState):
             return 'skewer_status_check'
         
         return outcome
-
-
-def plan_to_pre_skewer_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'execute_to_pre_skewer_pose',
-                                'plan_to_pre_skewer_pose')
 
 
 class plan_to_pre_skewer_pose(smach_ros.ServiceState):
@@ -1698,13 +886,6 @@ class plan_to_pre_skewer_pose(smach_ros.ServiceState):
         return outcome
 
 
-def plan_to_skewer_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'execute_to_skewer_pose',
-                                'plan_to_skewer_pose')
-
-
 class plan_to_skewer_pose(smach_ros.ServiceState):
     def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
         smach_ros.ServiceState.__init__(
@@ -1756,14 +937,6 @@ class plan_to_skewer_pose(smach_ros.ServiceState):
             return 'plan_to_skewer_pose'
         
         return outcome
-
-
-def plan_to_post_skewer_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'execute_to_post_skewer_pose',
-                                'plan_to_post_skewer_pose')
-
 
 class plan_to_post_skewer_pose(smach_ros.ServiceState):
     def __init__(self, service_name, service_spec, input_keys, outcomes, userdata_key):
@@ -1818,13 +991,6 @@ class plan_to_post_skewer_pose(smach_ros.ServiceState):
         return outcome
 
 
-def execute_to_pre_skewer_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'plan_to_skewer_pose',
-                                'plan_to_pre_skewer_pose')
-
-
 class execute_to_pre_skewer_pose(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
         super(execute_to_pre_skewer_pose, self).__init__(
@@ -1871,13 +1037,6 @@ class execute_to_pre_skewer_pose(smach_ros.ServiceState):
             return 'plan_to_pre_skewer_pose'
         
         return outcome
-
-
-def execute_to_skewer_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'move_to_feeding_initial_position',
-                                'plan_to_skewer_pose')
  
       
 class execute_to_skewer_pose(smach_ros.ServiceState):
@@ -1894,13 +1053,6 @@ class execute_to_skewer_pose(smach_ros.ServiceState):
             response_cb=execute_to_skewer_pose_callback
         ) 
       
-
-def execute_to_post_skewer_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'move_to_feeding_initial_position',
-                                'plan_to_post_skewer_pose') 
-
         
 class execute_to_post_skewer_pose(smach_ros.ServiceState):
     def __init__(self, request_key_, input_keys_sm, outcomes_sm):
@@ -1949,13 +1101,6 @@ class execute_to_post_skewer_pose(smach_ros.ServiceState):
         
         return outcome    
         
-
-def plan_to_feeding_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'execute_to_feeding_pose',
-                                'plan_to_feeding_pose')
-
 
 # . update cd
 class plan_to_feeding_pose(smach_ros.ServiceState):
@@ -2029,13 +1174,6 @@ class plan_to_feeding_pose(smach_ros.ServiceState):
       return outcome      
 
 
-def execute_to_feeding_pose_callback(userdata, response):
-  return generic_state_callback(userdata, 
-                                response, 
-                                'move_to_feeding_start_position',
-                                'plan_to_feeding_pose') 
-
-
 # .update cd 
 class execute_to_feeding_pose(smach_ros.ServiceState):
     def __init__(self
@@ -2106,9 +1244,7 @@ def main():
 
     sm = CustomStateMachine(outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
     
-    # Functional parameters
     use_opt = False
-    apply_utensil_fetching = False
 
     # Initialize necessary data in feeding task
     feeding_pose = Pose()
@@ -2122,34 +1258,10 @@ def main():
     
     feeding_initial_position = JointPositions()
     feeding_initial_position.joint_positions = [0.021247, -0.26079, 3.15111, -2.14524, 0.060838, -0.90679, 1.58046]
-    holder_position = JointPositions()
-    holder_position.joint_positions = [0.302989, -0.31447, 3.09643, -2.40708, 6.26457, -1.063090, 1.81463]
-    utensil_position = JointPositions()    
-    utensil_position.joint_positions = [0.206082, -0.305769, 2.64442, -2.3651, 6.09785, -1.06134, 1.36814]
-    bowl_transfer_initial_position = JointPositions()
-    bowl_transfer_initial_position.joint_positions = [1.12982, 0.575937, 3.04003, 4.18295 - 6.28, 5.67489, 1.18636, 0.290636]
-    
-    bowl_transfer_post_position = JointPositions()
-    bowl_transfer_post_position.joint_positions = [1.38236, 0.466606, 3.09348, 4.05094 - 6.28, 6.28229, 1.04642, 0.070713] 
-       
-    bowl_placement_pose = Pose()
-    bowl_placement_pose.position.x = 0.369719
-    bowl_placement_pose.position.y = -0.128634    
-    bowl_placement_pose.position.z = 0.118447    
-    bowl_placement_pose.orientation.x = -0.5591718754025408
-    bowl_placement_pose.orientation.y = -0.5122518858574863
-    bowl_placement_pose.orientation.z = -0.4673708958580917
-    bowl_placement_pose.orientation.w = 0.4544108987459028
-    # bowl_placement_quaternion = (bowl_placement_pose.orientation.x
-    #                              , bowl_placement_pose.orientation.y
-    #                              , bowl_placement_pose.orientation.z
-    #                              , bowl_placement_pose.orientation.w)    
-    # bowl_placement_pose.orientation = normalize_quaternion(bowl_placement_quaternion)
-    
-    gripper_open_position = 0
-    bowl_release_position = 0.5
-    bowl_handle_grasp_position = 1
-    
+
+    # update_anygrasp = True
+    # rospy.Subscriber('/kortex_motion_planning/collision_detection', Bool, lambda data: collision_detection_callback(data, sm))
+    # collision_subscriber = rospy.Subscriber('/kortex_motion_planning/collision_detection', Bool, collision_detection_callback, callback_args=(collision_status))
     
     sm.userdata.motion_plan = JointTrajectory()
     sm.userdata.update_anygrasp = True
@@ -2164,125 +1276,44 @@ def main():
     sm.userdata.collision_status.data = False
     sm.userdata.skewer_check_flag = True
     
-    sm.userdata.bowl_handle_pose = Pose()
-    
     # Remap variables
     sm.userdata.feeding_pose = feeding_pose
     sm.userdata.feeding_start_position = feeding_initial_position
     sm.userdata.feeding_initial_position = feeding_initial_position
-    sm.userdata.bowl_placement_pose = bowl_placement_pose
     # sm.userdata.update_anygrasp = update_anygrasp
     
+    # collision_detection_thread = threading.Thread(target=collision_detection_callback)
+    # collision_detection_thread.start()
+
+    # stop_client = rospy.ServiceProxy('/base/stop_action', kortex_driver.srv.StopAction)
+    # collision_subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, collision_detection_callback)
+
+
     # Open the container
     with sm:    
-      
-        smach.StateMachine.add('move_to_bowl_transfer_initial_position'
-                               , move_to_bowl_transfer_initial_position(
-                                 bowl_transfer_initial_position
-                                 , input_keys_sm
-                                 , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm)
-
-        smach.StateMachine.add('move_to_bowl_transfer_post_position'
-                               , move_to_bowl_transfer_post_position(
-                                 bowl_transfer_post_position
-                                 , input_keys_sm
-                                 , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm)
-
-        smach.StateMachine.add('bowl_grasp_generator'
-                               , bowl_grasp_generator('update_anygrasp'
-                                                 , input_keys_sm
-                                                 , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm)
-
-
-        smach.StateMachine.add('move_to_bowl_handle_pose',
-                              move_to_bowl_handle_pose('/kortex_simple_cartesian_motion_service',
-                                                      kortex_motion_planning.srv.KortexSimpleCmpe,
-                                                      input_keys_sm,
-                                                      outcomes_sm,
-                                                      'bowl_handle_pose'),
-                              transitions=transition_sm,
-                              remapping=remapping_sm)  
-
-        smach.StateMachine.add('open_gripper_for_bowl_grasping'
-                               , open_gripper_for_bowl_grasping(
-                                 gripper_open_position
-                                 , input_keys_sm
-                                 , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm)  
-
-
-        smach.StateMachine.add('grasp_bowl_handle'
-                               , grasp_bowl_handle(
-                                 bowl_handle_grasp_position
-                                 , input_keys_sm
-                                 , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm)        
-
-        
-        
-        smach.StateMachine.add('release_bowl'
-                               , release_bowl(
-                                 bowl_release_position
-                                 , input_keys_sm
-                                 , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm)
-
-        smach.StateMachine.add('bowl_transfer_initial_position'
-                          , move_to_bowl_transfer_initial_position(
-                            bowl_transfer_initial_position
-                            , input_keys_sm
-                            , outcomes_sm)
-                          , transitions=transition_sm
-                          , remapping=remapping_sm)
-        
-        smach.StateMachine.add('get_utensil'
-                          , get_utensil(
-                            True
-                            , holder_position
-                            , utensil_position
-                            , input_keys_sm
-                            , outcomes_sm)
-                          , transitions=transition_sm
-                          , remapping=remapping_sm)
-        
         smach.StateMachine.add('move_to_feeding_start_position'
                                , move_to_feeding_start_position(
                                  sm.userdata.feeding_initial_position
                                  , input_keys_sm
                                  , outcomes_sm)
+                                #  , collision_subscriber
+                                #  , stop_client)
                                , transitions=transition_sm
                                , remapping=remapping_sm)
         
+
+    # move_to_feeding_position_state = move_to_feeding_start_position(
+    #     target_positions_,
+    #     input_keys_sm,
+    #     outcomes_sm,
+    #     collision_subscriber,
+    #     stop_client
+    # )
+
         smach.StateMachine.add('skewer_status_check'
                                , skewer_status_check(sm.userdata.skewer_check_flag
                                                   , input_keys_sm
                                                   , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm)
-
-        smach.StateMachine.add('plan_for_bowl_upright_transfer',
-                              plan_for_bowl_upright_transfer('/motion_planning_server',
-                                                      kortex_motion_planning.srv.GenerateKortexMotionPlan,
-                                                      input_keys_sm,
-                                                      outcomes_sm,
-                                                      'bowl_placement_pose'),
-                              transitions=transition_sm,
-                              remapping=remapping_sm)  
-
-
-        smach.StateMachine.add('execution_for_bowl_upright_transfer'
-                               , execution_for_bowl_upright_transfer('motion_plan'
-                                                 , input_keys_sm
-                                                 , outcomes_sm)
                                , transitions=transition_sm
                                , remapping=remapping_sm)
 

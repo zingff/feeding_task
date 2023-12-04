@@ -29,7 +29,7 @@ int main(int argc, char **argv)
   manipulation.open_gripper();
   
   manipulation.reach_handle();
-  manipulation.goTemp();
+  // manipulation.goTemp();
   // ros::Duration(2).sleep();
   // manipulation.open_gripper();
   // manipulation.ompl_plan(0.348976, -0.321229, 0.276205);

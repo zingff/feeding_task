@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="anygrasp_generation" type="bowl_grasp_publisher.py" name="bowl_grasp_publisher" output="screen" required="true"/>
+
+    <group>
+        <node pkg="feeding_task" name="bowl_handle_grasp" type="bowl_handle_grasp" output="screen" required="true"/>
+
+    </group>
+</launch>

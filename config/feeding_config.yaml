@@ -24,3 +24,92 @@ feedingConfigs:
 # 0.285026, -0.0202379, 0.316972, 161.321, 3.56816, 90.4841
 # Current Cartesian pose of tool frame (Quaternion): 
 # 0.285026, -0.0202379, 0.316972, 0.690882, 0.703843, 0.093615, 0.136099
+
+
+
+
+# Follw for TEST
+bowl placement config
+Current position (rad): 
+0.796142, 0.98614, 3.07166, 4.93357, 2.48481, 1.6219, 5.65768
+Current position (deg): 
+45.6189, 56.5058, 176.006, 282.694, 142.38, 92.9351, 324.185
+Current Cartesian pose of tool frame (ZYX): 
+0.420817, -0.142423, 0.151256, -174.22, -60.7973, 83.2015
+Current Cartesian pose of tool frame (Quaternion): 
+0.420817, -0.142423, 0.151256, -0.627236, -0.591028, -0.348967, 0.368081
+
+bowl placement config 2
+Current position (rad): 
+0.946607, 1.28767, 2.84931, 5.00698, 2.4238, 1.73897, 5.69546
+Current position (deg): 
+54.2406, 73.7836, 163.265, 286.9, 138.884, 99.6428, 326.35
+Current Cartesian pose of tool frame (ZYX): 
+0.421964, -0.121995, 0.126497, -168.788, -86.0569, 75.1116
+Current Cartesian pose of tool frame (Quaternion): 
+0.421964, -0.121995, 0.126497, -0.536123, -0.496338, -0.49477, 0.470557
+
+
+bowl placement config 3 # * currently using
+Current position (rad): 
+0.991523, 1.27455, 2.76844, 5.00492, 2.52235, 1.65895, 5.62746
+Current position (deg): 
+56.8143, 73.0318, 158.632, 286.782, 144.53, 95.0578, 322.454
+Current Cartesian pose of tool frame (ZYX): 
+0.419719, -0.128634, 0.118447, -168.947, -81.2055, 75.4981
+Current Cartesian pose of tool frame (Quaternion): 
+0.419719, -0.128634, 0.118447, -0.559172, -0.512252, -0.467371, 0.454411
+
+
+blow initial config
+Current position (rad): 
+1.38378, 0.477674, 3.13819, 4.04069, 5.87697, 1.08992, 0.241945
+Current position (deg): 
+79.2907, 27.3707, 179.818, 231.532, 336.751, 62.4527, 13.8634
+Current Cartesian pose of tool frame (ZYX): 
+0.0170382, -0.595827, 0.337298, -36.2737, -97.6154, 117.437
+Current Cartesian pose of tool frame (Quaternion): 
+0.0170382, -0.595827, 0.337298, 0.504638, -0.546546, 0.413272, 0.5252
+
+
+blow initial config 1
+Current position (rad): 
+1.38346, 0.468048, 3.13815, 4.04097, 5.9685, 1.08196, 0.242012
+Current position (deg): 
+79.2725, 26.8192, 179.816, 231.547, 341.995, 61.9966, 13.8673
+Current Cartesian pose of tool frame (ZYX): 
+0.0404067, -0.5982, 0.344095, -49.4776, -98.3181, 135.417
+Current Cartesian pose of tool frame (Quaternion): 
+0.0404067, -0.5982, 0.344095, 0.531869, -0.513884, 0.429484, 0.518248
+
+
+bowl grasp initial config
+Current position (rad): 
+1.01126, 0.562948, 3.06348, 4.26766, 5.50453, 1.10276, 0.398962
+Current position (deg): 
+57.9453, 32.2569, 175.537, 244.537, 315.409, 63.1882, 22.8605
+Current Cartesian pose of tool frame (ZYX): 
+0.215666, -0.603104, 0.34643, 7.44269, -94.8265, 80.1833
+Current Cartesian pose of tool frame (Quaternion): 
+0.215666, -0.603104, 0.34643, 0.506703, -0.533767, 0.471444, 0.485887
+
+bowl grasp initial config # * currently using
+Current position (rad): 
+1.38236, 0.466606, 3.09348, 4.05094, 6.28229, 1.04642, 0.070713
+Current position (deg): 
+79.2091, 26.7365, 177.257, 232.119, 359.975, 59.9597, 4.05186
+Current Cartesian pose of tool frame (ZYX): 
+0.142992, -0.590117, 0.344255, -23.7394, -96.2985, 127.85
+Current Cartesian pose of tool frame (Quaternion): 
+0.142992, -0.590117, 0.344255, 0.594374, -0.443707, 0.519144, 0.424656
+
+
+move_to_bowl_transfer_initial_position # * currently using
+Current position (rad): 
+1.12982, 0.575937, 3.04003, 4.18295, 5.67489, 1.18636, 0.290636
+Current position (deg): 
+64.7387, 33.0012, 174.194, 239.683, 325.171, 67.9783, 16.6534
+Current Cartesian pose of tool frame (ZYX): 
+0.176945, -0.605509, 0.342591, 16.9206, -92.2887, 71.854
+Current Cartesian pose of tool frame (Quaternion): 
+0.176945, -0.605509, 0.342591, 0.500991, -0.51774, 0.488004, 0.492754
