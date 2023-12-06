@@ -595,3 +595,161 @@ def execute(self, ud):
 
     return 'succeeded'
   
+
+import argparse
+import anygrasp_generation
+import kortex_driver
+import kortex_motion_planning
+from kortex_motion_planning.msg import JointPositions
+import rospy
+import inspect
+import threading
+import smach
+import smach_ros
+import std_srvs.srv
+from tf2_msgs import msg
+import anygrasp_generation.srv
+import kortex_motion_planning.srv
+import feeding_task.srv
+import door_open_task.srv
+from geometry_msgs.msg import Pose, Transform, Quaternion, Vector3
+from trajectory_msgs.msg import JointTrajectory
+import tf2_ros
+import math
+import tf.transformations
+from std_msgs.msg import Bool, Empty
+import threading
+import kortex_driver.srv
+import kortex_driver.msg
+import numpy as np
+
+
+collision_detected = False  # deprecated
+COLLISION_DETECTION_TOPIC = "/fsm/collision_detection"
+STOP_SERVICE = "/base/stop"
+SIMPLE_JMPE_SERVICE = "/kortex_simple_joint_motion_service"
+SIMPLE_CMPE_SERVICE = "/kortex_simple_cartesian_motion_service"
+GRIPPER_COMMAND_SERVICE = "/kortex_gripper_command_service"
+DOOR_OPEN_SERVICE = "/feeding_task/door_open_service"
+BOWL_GRASP_GENERATOR_SERVICE = "/bowl_grasp_generator"
+MOTION_EXECUTOR_SERVICE = "/motion_execution_server"
+MOTION_PLANNER_SERVICE = "/motion_planning_server"
+FOOD_ITEM_SELECTOR_SERVICE = "/grasp_generator"
+GET_UTENSIL_SERVICE = "/kortex_get_utensil_service"
+SKEWER_STATUS_CHECKER_SERVICE = "skewer_status_checker"
+VOICE_STREAM_TOPIC = ""
+
+import rospy
+import threading
+from std_msgs.msg import String  
+
+class open_gripper_for_door_handle_grasping(smach_ros.ServiceState):
+    def __init__(self, target_position, input_keys_sm, outcomes_sm, apply_collision_detection=False):
+        super(open_gripper_for_door_handle_grasping, self).__init__(
+            service_name=GRIPPER_COMMAND_SERVICE,
+            service_spec=kortex_motion_planning.srv.SendGripperCommand,
+            request=kortex_motion_planning.srv.SendGripperCommandRequest(target_position),
+            response_slots=['success'],
+            outcomes=outcomes_sm,
+            input_keys=input_keys_sm,
+            output_keys=input_keys_sm,
+            response_cb=""
+        )
+        self.collision_status = False
+        self.voice_command_received = False
+        self.apply_collision_detection = apply_collision_detection
+
+    def execute(self, userdata):
+        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
+        thread_stop_event = threading.Event()
+
+        def collision_detection():
+            def callback(msg):
+                if msg.data:
+                    stop_client(kortex_driver.msg.Empty())
+                    rospy.loginfo("Collision detected.")
+                    self.collision_status = True
+                    thread_stop_event.set()
+
+            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown() and not thread_stop_event.is_set():
+                rospy.sleep(0.1)
+
+            subscriber.unregister()
+            rospy.loginfo("Collision detection thread terminated.")
+
+        def voice_stream_monitor():
+            def callback(msg):
+                # Implement the logic to handle voice stream messages
+                rospy.loginfo("Voice command received: " + msg.data)
+                self.voice_command_received = True
+                thread_stop_event.set()
+
+            subscriber = rospy.Subscriber(VOICE_STREAM_TOPIC, String, callback)
+
+            while not rospy.is_shutdown() and not thread_stop_event.is_set():
+                rospy.sleep(0.1)
+
+            subscriber.unregister()
+            rospy.loginfo("Voice stream monitor thread terminated.")
+
+        collision_thread = threading.Thread(target=collision_detection)
+        voice_thread = threading.Thread(target=voice_stream_monitor)
+
+        if self.apply_collision_detection:
+            collision_thread.start()
+
+        voice_thread.start()
+
+        outcome = super(open_gripper_for_door_handle_grasping, self).execute(userdata)
+
+        thread_stop_event.set()
+        if self.apply_collision_detection:
+            collision_thread.join()
+        voice_thread.join()
+
+        rospy.loginfo("All additional threads joined successfully.")
+
+        if self.collision_status:
+            rospy.loginfo("Aborting due to collision.")
+            outcome = 'aborted'
+            return str(self.__class__.__name__)
+
+        # Implement additional logic here to handle voice command outcomes, if necessary
+
+        return outcome
+
+
+class open_gripper_for_door_handle_grasping(smach_ros.ServiceState):
+    def __init__(self, target_position, input_keys_sm, outcomes_sm, 
+                 apply_collision_detection=False, apply_voice_monitor=False):
+        super(open_gripper_for_door_handle_grasping, self).__init__(
+            service_name=GRIPPER_COMMAND_SERVICE,
+            service_spec=kortex_motion_planning.srv.SendGripperCommand,
+            request=kortex_motion_planning.srv.SendGripperCommandRequest(target_position),
+            response_slots=['success'],
+            outcomes=outcomes_sm,
+            input_keys=input_keys_sm,
+            output_keys=input_keys_sm,
+            response_cb=""
+        )
+        self.collision_status = False
+        self.voice_command_received = False
+        self.apply_collision_detection = apply_collision_detection
+        self.apply_voice_monitor = apply_voice_monitor
+
+    def execute(self, userdata):
+        # ... [rest of your existing code] ...
+
+        # Additional thread for voice monitoring
+        if self.apply_voice_monitor:
+            voice_thread = threading.Thread(target=voice_stream_monitor)
+            voice_thread.start()
+
+        # ... [rest of your existing code] ...
+
+        if self.apply_voice_monitor:
+            voice_thread.join()
+
+        # ... [rest of your existing code] ...

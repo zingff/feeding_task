@@ -4,3 +4,9 @@ launch/param.launch
 src/nodes/initial.cpp
 src/nodes/ompl_test.cpp
 src/nodes/perception_test.cpp
+
+src/fsm/bak.py
+src/fsm/test.py
+src/functions/bak.cpp
+src/utilities/bak.py
+src/actions/*

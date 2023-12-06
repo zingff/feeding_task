@@ -3,6 +3,11 @@
 # Note: a finite state machine for feeding task
 # Note: name of the manipulator: sausage lip arm (SLA)
 
+# Update log:
+  # This version is a complete state machine for feeding pipeline
+  # with real time collision detection logic,
+  # functional trigger
+
 # TODO List: 
 # √ concurrent sm for collision detection (cd is not always necessary)
   # √ change to a threading logic
@@ -83,7 +88,7 @@ MOTION_PLANNER_SERVICE = "/motion_planning_server"
 FOOD_ITEM_SELECTOR_SERVICE = "/grasp_generator"
 GET_UTENSIL_SERVICE = "/kortex_get_utensil_service"
 SKEWER_STATUS_CHECKER_SERVICE = "skewer_status_checker"
-VOICE_STREAM_TOPIC = ""
+
 
 
 outcomes_sm = [
@@ -490,6 +495,7 @@ class open_gripper_for_door_handle_grasping(smach_ros.ServiceState):
         collision_thread_stop = threading.Event()
 
         def collision_detection():
+            
             def callback(msg):
                 if msg.data:
                     stop_client(kortex_driver.msg.Empty())

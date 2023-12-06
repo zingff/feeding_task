@@ -1,8 +1,75 @@
 # Feeding task
 
-Those packages demonstrate a feeding pipeline including bowl grasping, utensil fetching, food acquisition and food transfer. 
+This package demonstrates a feeding 
 
 Note that all experiments are conducted on Ubuntu 20.04 LTS (Focal Fossa) with a Kinova Gen3 7DOF arm.
+
+This project is implemented with a finite state machine(FSM) utilizing smach.
+
+## Finite state machine for feeding task
+
+The feeding task mainly focuses on those 5 subtasks:
+
+- Door open
+- Bowl grasping
+- Utensil fetching
+- Food acquisition
+- Food transfer
+
+### An alternative motion planning logic for feeding cycle
+ `plan_to_pre_skewer_pose`
+ `plan_to_skewer_pose`
+ `plan_to_post_skewer_pose`
+ `execute_to_pre_skewer_pose`
+ `execute_to_skewer_pose`
+ `execute_to_post_skewer_pose`
+
+### 1. Door opening
+ `move_to_initial_door_open_position`
+ `open_gripper_for_door_handle_grasping`
+ `move_to_door_handle_pose`
+ `grasp_door_handle`
+ `open_door_with_admittance_control`
+ `move_to_post_door_open_position` 
+
+### 2. Bowl grasping
+ `move_to_bowl_grasping_initial_position`
+ `open_gripper_for_bowl_grasping`
+ `bowl_grasp_generator`
+ `move_to_bowl_handle_pose`
+ `grasp_bowl_handle`
+ `move_to_bowl_grasping_post_position`
+
+### 3. Bowl upright transfer
+ `plan_for_bowl_upright_transfer`
+ `execution_for_bowl_upright_transfer`
+ `release_bowl`
+
+### 4. Utensil fetching
+ `get_utensil`
+
+### 5. Food selection and skewer
+ `move_to_feeding_start_position`
+ `food_item_selector`
+ `move_to_pre_skewer_pose`
+ `move_to_skewer_pose`
+ `move_to_post_skewer_pose`
+ `move_to_feeding_initial_position`
+ `skewer_status_check`
+
+### 6. Food transfer
+ `plan_to_feeding_pose`
+ `execute_to_feeding_pose`
+
+
+
+算了，有时间再写
+
+
+
+
+
+**Note:** All following contents are of an older version (deprecated).
 
 ## Requirements
 
