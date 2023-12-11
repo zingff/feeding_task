@@ -8,6 +8,12 @@ from ctypes import *
 import numpy as np
 import time
 from feeding_task.srv import SkewerStatusCheck, SkewerStatusCheckResponse
+import sys
+import os
+
+parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+sys.path.append(parent_dir)
+from fsm.utilities import get_ros_param
 
 # TODO: just use the most simple way to check, remove point cloud conversion
 # TODO: since it is time-consuming
@@ -73,7 +79,11 @@ def convertCloudFromRosToOpen3d(ros_cloud):
     return open3d_cloud
 
 
-def process_point_cloud(point_cloud, remove_outlier=True):
+def process_point_cloud(
+  point_cloud, 
+  point_cloud_lower_limit, 
+  point_cloud_depth,
+  remove_outlier=True):
     cloud = convertCloudFromRosToOpen3d(point_cloud)
     points = np.asarray(cloud.points)
     colors = np.asarray(cloud.colors)
@@ -87,7 +97,8 @@ def process_point_cloud(point_cloud, remove_outlier=True):
     colors_z = colors[:, 2].reshape(image_shape)
 
     if remove_outlier:
-        mask = (points_z > 0.28) & (points_z < 0.34)
+        point_cloud_upper_limit = point_cloud_lower_limit + point_cloud_depth
+        mask = (points_z > point_cloud_lower_limit) & (points_z < point_cloud_upper_limit)
         points = np.stack([points_x, points_y, points_z], axis=-1)
         colors = np.stack([colors_x, colors_y, colors_z], axis=-1)
         points = points[mask].astype(np.float32)
@@ -118,12 +129,21 @@ def visualize_prediction_result(points, colors):
 def skewer_status_check_service(req):
   try:
     if (req.skewer_checker_flag):
+      point_cloud_confidence = get_ros_param(
+        "/foodSkewer/skewerStatusChecker/pointCloudConfidence", 
+        20)
+      point_cloud_lower_limit = get_ros_param(
+        "/foodSkewer/skewerStatusChecker/pointCloudLowerLimit", 
+        0.28)
+      point_cloud_depth = get_ros_param(
+        "/foodSkewer/skewerStatusChecker/pointCloudRange", 
+        0.06)
       point_cloud_topic = "/camera/depth_registered/points"
       raw_point_cloud = rospy.wait_for_message(point_cloud_topic, PointCloud2, 1.0)
       
-      _, _, point_number = process_point_cloud(raw_point_cloud)
+      _, _, point_number = process_point_cloud(raw_point_cloud, point_cloud_lower_limit, point_cloud_depth)
       skewer_status = False
-      if (point_number > 20):
+      if (point_number > point_cloud_confidence):
         skewer_status = True
         success_loginfo("Skewer status: " + str(skewer_status))
         success_loginfo("Point number: " + str(point_number))

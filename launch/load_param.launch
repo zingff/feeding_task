@@ -1,0 +1,3 @@
+<launch>
+  <rosparam file="$(find feeding_task)/config/feeding_config.yaml" command="load" />
+</launch>

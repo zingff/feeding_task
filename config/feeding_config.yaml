@@ -1,115 +1,77 @@
-# Robot configuration
-namedConfigs:
-  homeConfiguration: [4.1324e-06, 0.261901, 3.14137, 4.01393, 1.22496e-05, 0.959814, 1.57068]
-feedingConfigs:
-  doorOpenning:
-    initialConfiguration: [0, 0, 0, 0, 0, 0, 0]
-    postConfiguration: [0, 0, 0, 0, 0, 0, 0]
-  bowlFetching:
-    placementPose: [0, 0, 0, 0, 0, 0, 0]
-  utensilFetching:
-    utensilConfiguration: [0, 0, 0, 0, 0, 0, 0]
-  foodAcquisition:
-    initialConfiguration: [0.319602, -0.22124, 3.1419, -2.22188, 0.0315863, -0.74888, 1.56028]
-    skewerVerticalOrientation: [3.08192, -0.00486, 1.58491]
-  foodTransfer:
-    feedingPose: [-0.15135, 0.235484, 0.557796, 0.3872724, -0.4914169, -0.604657, 0.4928685]
+fsmConfig:
+  useOpt: false
+  useForceSensing: true
+  startSubtask: door_open
 
-# # initial pose for skewer
-# Current position (rad): 
-# 0.0212533, 6.02209, 3.15095, 4.13757, 0.0608627, 5.37585, 1.58045
-# Current position (deg): 
-# 1.21781, 345.066, 180.55, 237.083, 3.48743, 308.036, 90.5598
-# Current Cartesian pose of tool frame (ZYX): 
-# 0.285026, -0.0202379, 0.316972, 161.321, 3.56816, 90.4841
-# Current Cartesian pose of tool frame (Quaternion): 
-# 0.285026, -0.0202379, 0.316972, 0.690882, 0.703843, 0.093615, 0.136099
+collisionDetection:
+  basicTorqueThreshold: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+  torqueThresholdPro: [3.0, 3.4, 3.0, 3.0, 3.0, 3.0, 3.0]
 
+rosConfig:
+  topic: 
+    collisionStatusTopic: /fsm/collision_status
+    collisionStatusTopicPro: /fsm/collision_status_pro
+  service: 
+    simpleJMPE: /kortex_simple_joint_motion_service
+    simpleCMPE: /kortex_simple_cartesian_motion_service
+    gripperCommand: /kortex_gripper_command_service
+    doorOpen: /feeding_task/door_open_service
+    bowlGraspGeneration: /bowl_grasp_generator
+    cartesianMotionPlanner: /motion_planning_server
+    motionExecutor: /motion_execution_server
+    foodItemSelector: /grasp_generator
+    getUtensil: /kortex_get_utensil_service
+    skewerStatusChecker: skewer_status_checker
+    voiceStreamMontor: tbd
+    uprightSkewer: /kortex_upright_skewer_action_service
+  simpleCMPEConfig:
+    goalPositionTorlerance: 0.01
+    goalOrientationTorlerance: 0.02
+    planningTime: 5.0
+    planningAttemptsNumber: 5
 
-
-
-# Follw for TEST
-bowl placement config
-Current position (rad): 
-0.796142, 0.98614, 3.07166, 4.93357, 2.48481, 1.6219, 5.65768
-Current position (deg): 
-45.6189, 56.5058, 176.006, 282.694, 142.38, 92.9351, 324.185
-Current Cartesian pose of tool frame (ZYX): 
-0.420817, -0.142423, 0.151256, -174.22, -60.7973, 83.2015
-Current Cartesian pose of tool frame (Quaternion): 
-0.420817, -0.142423, 0.151256, -0.627236, -0.591028, -0.348967, 0.368081
-
-bowl placement config 2
-Current position (rad): 
-0.946607, 1.28767, 2.84931, 5.00698, 2.4238, 1.73897, 5.69546
-Current position (deg): 
-54.2406, 73.7836, 163.265, 286.9, 138.884, 99.6428, 326.35
-Current Cartesian pose of tool frame (ZYX): 
-0.421964, -0.121995, 0.126497, -168.788, -86.0569, 75.1116
-Current Cartesian pose of tool frame (Quaternion): 
-0.421964, -0.121995, 0.126497, -0.536123, -0.496338, -0.49477, 0.470557
+foodTransfer:
+  feedingPose: [-0.15135, 0.235484, 0.557796, 0.3872724, -0.4914169, -0.604657, 0.4928685]
 
 
-bowl placement config 3 # * currently using
-Current position (rad): 
-0.991523, 1.27455, 2.76844, 5.00492, 2.52235, 1.65895, 5.62746
-Current position (deg): 
-56.8143, 73.0318, 158.632, 286.782, 144.53, 95.0578, 322.454
-Current Cartesian pose of tool frame (ZYX): 
-0.419719, -0.128634, 0.118447, -168.947, -81.2055, 75.4981
-Current Cartesian pose of tool frame (Quaternion): 
-0.419719, -0.128634, 0.118447, -0.559172, -0.512252, -0.467371, 0.454411
+foodSkewer:
+  uprightSkewerTwist: [0, 0, -0.02, 0, 0, 0]
+  zeroSkewerTwist: [0, 0, 0.0, 0, 0, 0]
+  lpfCoefficient: 0.2
+  wrenchForceZThreshold: 8.0
+  feedingInitialPosition: [0.021247, -0.26079, 3.15111, -2.14524, 0.060838, -0.90679, 1.58046]
+  skewerStatusChecker:
+    pointCloudUpperLimit: 0.34
+    pointCloudLowerLimit: 0.28
+    pointCloudRange: 0.06
+    pointCloudConfidence: 20
+
+utensil:
+  holderPosition: [0.302989, -0.31447, 3.09643, -2.40708, 6.26457, -1.063090, 1.81463]
+  utensilPosition: [0.206082, -0.305769, 2.64442, -2.3651, 6.09785, -1.06134, 1.36814]
+
+bowlTransfer:
+  initialPosition: [1.12982, 0.575937, 3.04003, -2.09705, 5.67489, 1.18636, 0.290636]
+  postPosition: [1.38236, 0.466606, 3.09348, -2.22906, 6.28229, 1.04642, 0.070713] 
+  placementPose: [0.369719, -0.128634,  0.118447, -0.5591718754025408, -0.5122518858574863, -0.4673708958580917, 0.4544108987459028]
+  bowlGraspingGripperPosition: 1.0
+  bowlReleaseGripperPosition: 0.5
+
+doorOpen:
+  initialPosition: [1.3686876090750437, 0.28184642233856894, 3.144328097731239, -2.2567190226876095, 6.009197207678883, 0.9603996509598605, 1.6590017452006982]
+  postPosition: [0.10398898576184974, 0.6798720661633672, 3.210061920145531, -1.3850321265641838, 4.4163636859539315, 1.9033339091773762, 2.655396283861733]
+  doorHandleGraspingGripperPosition: 0.8
+  reachApriltagFlag: true
+  doorOpenFlag: true
 
 
-blow initial config
-Current position (rad): 
-1.38378, 0.477674, 3.13819, 4.04069, 5.87697, 1.08992, 0.241945
-Current position (deg): 
-79.2907, 27.3707, 179.818, 231.532, 336.751, 62.4527, 13.8634
-Current Cartesian pose of tool frame (ZYX): 
-0.0170382, -0.595827, 0.337298, -36.2737, -97.6154, 117.437
-Current Cartesian pose of tool frame (Quaternion): 
-0.0170382, -0.595827, 0.337298, 0.504638, -0.546546, 0.413272, 0.5252
-
-
-blow initial config 1
-Current position (rad): 
-1.38346, 0.468048, 3.13815, 4.04097, 5.9685, 1.08196, 0.242012
-Current position (deg): 
-79.2725, 26.8192, 179.816, 231.547, 341.995, 61.9966, 13.8673
-Current Cartesian pose of tool frame (ZYX): 
-0.0404067, -0.5982, 0.344095, -49.4776, -98.3181, 135.417
-Current Cartesian pose of tool frame (Quaternion): 
-0.0404067, -0.5982, 0.344095, 0.531869, -0.513884, 0.429484, 0.518248
-
-
-bowl grasp initial config
-Current position (rad): 
-1.01126, 0.562948, 3.06348, 4.26766, 5.50453, 1.10276, 0.398962
-Current position (deg): 
-57.9453, 32.2569, 175.537, 244.537, 315.409, 63.1882, 22.8605
-Current Cartesian pose of tool frame (ZYX): 
-0.215666, -0.603104, 0.34643, 7.44269, -94.8265, 80.1833
-Current Cartesian pose of tool frame (Quaternion): 
-0.215666, -0.603104, 0.34643, 0.506703, -0.533767, 0.471444, 0.485887
-
-bowl grasp initial config # * currently using
-Current position (rad): 
-1.38236, 0.466606, 3.09348, 4.05094, 6.28229, 1.04642, 0.070713
-Current position (deg): 
-79.2091, 26.7365, 177.257, 232.119, 359.975, 59.9597, 4.05186
-Current Cartesian pose of tool frame (ZYX): 
-0.142992, -0.590117, 0.344255, -23.7394, -96.2985, 127.85
-Current Cartesian pose of tool frame (Quaternion): 
-0.142992, -0.590117, 0.344255, 0.594374, -0.443707, 0.519144, 0.424656
-
-
-move_to_bowl_transfer_initial_position # * currently using
-Current position (rad): 
-1.12982, 0.575937, 3.04003, 4.18295, 5.67489, 1.18636, 0.290636
-Current position (deg): 
-64.7387, 33.0012, 174.194, 239.683, 325.171, 67.9783, 16.6534
-Current Cartesian pose of tool frame (ZYX): 
-0.176945, -0.605509, 0.342591, 16.9206, -92.2887, 71.854
-Current Cartesian pose of tool frame (Quaternion): 
-0.176945, -0.605509, 0.342591, 0.500991, -0.51774, 0.488004, 0.492754
+kortex: 
+  config:
+    baseFrame: 3
+    gripperOpenPosition: 0
+  topic:
+    baseCyclicFeedback: /base_feedback
+  service: 
+    sendGripperCommand: /base/send_gripper_command
+    sendTwistCommand: /base/send_twist_command
+    stop: /base/stop

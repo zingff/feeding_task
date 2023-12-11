@@ -696,6 +696,10 @@ class open_gripper_for_door_handle_grasping(smach_ros.ServiceState):
 
         collision_thread = threading.Thread(target=collision_detection)
         voice_thread = threading.Thread(target=voice_stream_monitor)
+        
+        if self.apply_voice_monitor:
+            voice_thread = threading.Thread(target=voice_stream_monitor)
+            voice_thread.start()
 
         if self.apply_collision_detection:
             collision_thread.start()
@@ -709,14 +713,15 @@ class open_gripper_for_door_handle_grasping(smach_ros.ServiceState):
             collision_thread.join()
         voice_thread.join()
 
+        if self.apply_voice_monitor:
+            voice_thread.join()
+
         rospy.loginfo("All additional threads joined successfully.")
 
         if self.collision_status:
             rospy.loginfo("Aborting due to collision.")
             outcome = 'aborted'
             return str(self.__class__.__name__)
-
-        # Implement additional logic here to handle voice command outcomes, if necessary
 
         return outcome
 

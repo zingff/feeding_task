@@ -10,7 +10,6 @@
 # √ modify the skewer action in a cb in food item selector 
 # √ add a loop for skewer task 
 # √ add simple cpe to replace the original one 
-# * modify the cd to be dynamic tuning/adaptive mode
 # √ add a function to check if a skewer is successful (pc)
 # √ update the collision detection logic in fsm
 # √ modify skewer mpe
@@ -28,24 +27,35 @@
     # √ grasp door handle
     # √ open door
     # √ move to post door open position
-# * add force sensing for skewer state
 # √ add functional trigger for feeding task
 # √ format all node/service/topic name with prefix
   # . (deprecated) ftsm or feeding_task
-# * consider the outcomes of the fsm
 # √ mergy ku into kmp
 # √ add jlc in gcp
 # √ change service name to static constant form
+# // design voice control interface
+# √ modfity use_opt and use_force_sensing to userdata
+# √ load all param in ros param server
+  # √ fsm
+  # √ ssc
+  # √ kmp (mp, cd)
+# √ add force sensing for skewer state
+# √ modify the cd to be adaptive mode
+  # √ just add a set of thres and pub with dif top
+# * consider the outcomes of the fsm, vc
+  # * functional trigger
+  # * add logic to check empty: food item selector: succeeded
 # * change bowl handle logic
-# * design voice control interface
 # * add face detection logic
-# * change the info color logic by subtasks
+# * change color group by subtasks
+# * design new 3d print parts
+# * concder disposable fork
 
 
 import argparse
 import anygrasp_generation
 import kortex_driver
-import kortex_motion_planning
+import kortex_motion_planning.msg
 from kortex_motion_planning.msg import JointPositions
 import rospy
 import inspect
@@ -53,6 +63,7 @@ import threading
 import smach
 import smach_ros
 import std_srvs.srv
+import std_msgs.msg
 from tf2_msgs import msg
 import anygrasp_generation.srv
 import kortex_motion_planning.srv
@@ -68,23 +79,24 @@ import threading
 import kortex_driver.srv
 import kortex_driver.msg
 import numpy as np
+from utilities import get_ros_param
 
 
-collision_detected = False  # deprecated
-COLLISION_DETECTION_TOPIC = "/fsm/collision_detection"
-STOP_SERVICE = "/base/stop"
-SIMPLE_JMPE_SERVICE = "/kortex_simple_joint_motion_service"
-SIMPLE_CMPE_SERVICE = "/kortex_simple_cartesian_motion_service"
-GRIPPER_COMMAND_SERVICE = "/kortex_gripper_command_service"
-DOOR_OPEN_SERVICE = "/feeding_task/door_open_service"
-BOWL_GRASP_GENERATOR_SERVICE = "/bowl_grasp_generator"
-MOTION_EXECUTOR_SERVICE = "/motion_execution_server"
-MOTION_PLANNER_SERVICE = "/motion_planning_server"
-FOOD_ITEM_SELECTOR_SERVICE = "/grasp_generator"
-GET_UTENSIL_SERVICE = "/kortex_get_utensil_service"
-SKEWER_STATUS_CHECKER_SERVICE = "skewer_status_checker"
-VOICE_STREAM_TOPIC = ""
-
+STOP_SERVICE = get_ros_param("/kortex/service/stop", "/base/stop")
+COLLISION_DETECTION_TOPIC = get_ros_param("/rosConfig/topic/collisionStatusTopic", "/fsm/collision_detection")
+COLLISION_DETECTION_PRO_TOPIC = get_ros_param("/rosConfig/topic/collisionStatusTopicPro", "/fsm/collision_detection")
+SIMPLE_JMPE_SERVICE = get_ros_param("/rosConfig/service/simpleJMPE", "/kortex_simple_joint_motion_service")
+SIMPLE_CMPE_SERVICE = get_ros_param("/rosConfig/service/simpleCMPE", "/kortex_simple_cartesian_motion_service")
+GRIPPER_COMMAND_SERVICE = get_ros_param("/rosConfig/service/gripperCommand", "/kortex_gripper_command_service")
+DOOR_OPEN_SERVICE = get_ros_param("/rosConfig/service/doorOpen", "/feeding_task/door_open_service")
+BOWL_GRASP_GENERATOR_SERVICE = get_ros_param("/rosConfig/service/bowlGraspGeneration", "/bowl_grasp_generator")
+MOTION_PLANNER_SERVICE = get_ros_param("/rosConfig/service/cartesianMotionPlanner", "/motion_planning_server")
+MOTION_EXECUTOR_SERVICE = get_ros_param("/rosConfig/service/motionExecutor", "/motion_execution_server")
+FOOD_ITEM_SELECTOR_SERVICE = get_ros_param("/rosConfig/service/foodItemSelector", "/grasp_generator")
+GET_UTENSIL_SERVICE = get_ros_param("/rosConfig/service/getUtensil", "/kortex_get_utensil_service")
+SKEWER_STATUS_CHECKER_SERVICE = get_ros_param("/rosConfig/service/skewerStatusChecker", "skewer_status_checker")
+VOICE_STREAM_TOPIC = get_ros_param("/rosConfig/service/voiceStreamMontor", "")
+UPRIGHT_SKEWER_SERVICE = get_ros_param("/rosConfig/service/uprightSkewer", "/kortex_upright_skewer_action_service")
 
 outcomes_sm = [
     # An alternative motion planning logic for feeding cycle
@@ -133,6 +145,7 @@ outcomes_sm = [
     , 'food_item_selector'
     , 'move_to_pre_skewer_pose'
     , 'move_to_skewer_pose'
+    , 'skewer_with_force_sensing' # alternative
     , 'move_to_post_skewer_pose'
     , 'move_to_feeding_initial_position'
     , 'skewer_status_check'
@@ -158,6 +171,8 @@ input_keys_sm = [
     , 'collision_status'
     , 'bowl_placement_pose'
     , 'bowl_handle_pose'
+    , 'use_force_sensing'
+    , 'use_opt'
                  ]
 
 
@@ -204,6 +219,7 @@ transition_sm = {
     , 'food_item_selector': 'food_item_selector'
     , 'move_to_pre_skewer_pose': 'move_to_pre_skewer_pose'
     , 'move_to_skewer_pose': 'move_to_skewer_pose'
+    , 'skewer_with_force_sensing': 'skewer_with_force_sensing' # alternative
     , 'move_to_post_skewer_pose': 'move_to_post_skewer_pose'
     , 'move_to_feeding_initial_position' : 'move_to_feeding_initial_position'
     , 'skewer_status_check': 'skewer_status_check'    
@@ -214,9 +230,6 @@ transition_sm = {
 }
 
 
-# from internal state machine to global variables
-# keys used within the specific state: variable in sm's userdata (i.e., sm.userdata)
-# io keys: userdata.data
 remapping_sm = {
       'motion_plan': 'motion_plan'
     , 'update_anygrasp': 'update_anygrasp'
@@ -228,7 +241,11 @@ remapping_sm = {
     , 'feeding_pose': 'feeding_pose'
     , 'bowl_placement_pose': 'bowl_placement_pose'
     , 'bowl_handle_pose': 'bowl_handle_pose'
+    , 'use_force_sensing': 'use_force_sensing'
+    , 'use_opt': 'use_opt'
 }
+
+
 
 def normalize_quaternion(quaternion):
     return quaternion / np.linalg.norm(quaternion)
@@ -291,6 +308,11 @@ class StateOutputStyle:
     purple = '\033[1;35m'
     sky_blue = '\033[1;36m'
     
+    # 20231208 the azure color is inspired from 
+    # 20231208 today's clear and azure sky
+    # 20231208 what a nice day, yet a slave day.
+    azure = '\033[1;38;5;81m'
+    
     bg_red = '\033[1;41m'
     bg_green = '\033[1;42m'
     bg_yellow = '\033[1;43m'
@@ -302,10 +324,14 @@ class StateOutputStyle:
     stop_call = '\033[1;38;5;121m'
     striking  = '\033[1;38;5;190m'
     normal = '\033[38;5;152m'
-  
+    
   
 def success_loginfo(msg):
     rospy.loginfo(StateOutputStyle.success + msg + StateOutputStyle.default)
+
+
+def warn_loginfo(msg):
+    rospy.loginfo(StateOutputStyle.yellow + msg + StateOutputStyle.default)
 
 
 def failure_loginfo(msg):
@@ -326,6 +352,32 @@ def stop_loginfo():
 
 def normal_loginfo(msg):
     rospy.loginfo(StateOutputStyle.normal + msg + StateOutputStyle.default)
+
+
+def get_ros_param(param_name, default_value = None):
+    if not rospy.has_param(param_name) and default_value is not None:
+        warn_loginfo("Couldn't retrieve param: " + str(param_name) + "in ROS parameter server, set it to default value, please check if a correct default value is given.")
+        return default_value
+    elif not rospy.has_param(param_name) and default_value is None:
+        failure_loginfo("Couldn't retrieve param: " + str(param_name) + "in ROS parameter server nor assign the value with default value.")
+        return None
+    else:
+        param_value = rospy.get_param(param_name, default_value)
+        return param_value
+
+
+def get_checked_ros_param(param_name, expected_type):
+    if not rospy.has_param(param_name):
+        rospy.logwarn(f"Parameter '{param_name}' not found.")
+        return None
+
+    param_value = rospy.get_param(param_name)
+
+    if not isinstance(param_value, expected_type):
+        rospy.logwarn(f"Parameter '{param_name}' is not of type {expected_type}.")
+        return None
+
+    return param_value
 
 
 def degrees2Radians(degrees):
@@ -385,6 +437,109 @@ def generic_userdata_state_callback(userdata, response, next_state_on_success, n
 
 
 # Define states
+# TODO: test the possible execute logic for voice stream monitor
+class placeholder(smach_ros.ServiceState):
+    def __init__(self
+                 , target_position
+                 , input_keys_sm
+                 , outcomes_sm
+                 , apply_collision_detection = False
+                 , apply_voice_monitor = False):
+        super(placeholder, self).__init__(
+            service_name=SIMPLE_JMPE_SERVICE,
+            service_spec=kortex_motion_planning.srv.KortexSimpleJmpe,
+            request=kortex_motion_planning.srv.KortexSimpleJmpeRequest(
+              target_position),
+            response_slots=['success'],
+            outcomes=outcomes_sm,
+            input_keys=input_keys_sm,
+            output_keys=input_keys_sm,
+            response_cb=''
+        )
+        self.collision_status = False
+        self.apply_collision_detection = apply_collision_detection
+        self.voice_command_received = False
+        self.apply_voice_monitor = apply_voice_monitor
+        self.voice_command = std_msgs.msg.String()
+        
+    def execute(self, userdata):
+      stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
+      thread_stop_event = threading.Event()
+
+      def collision_detection():
+          def callback(msg):
+              if msg.data:
+                  stop_client(kortex_driver.msg.Empty())
+                  stop_loginfo()
+                  self.collision_status = True
+                  thread_stop_event.set()
+
+          subscriber = rospy.Subscriber(
+            COLLISION_DETECTION_TOPIC, 
+            Bool, 
+            callback)
+
+          while not rospy.is_shutdown():
+              if thread_stop_event.is_set():
+                break
+              rospy.sleep(0.1)
+              
+          subscriber.unregister()
+          normal_loginfo("Collision detection thread terminated.")
+          
+      def voice_stream_monitor():
+          def callback(msg):
+              rospy.loginfo("Voice command received: " + msg.data)
+              self.voice_command_received = True
+              self.voice_command = msg.data()
+              thread_stop_event.set()
+          
+          subscriber = rospy.Subscriber(
+            VOICE_STREAM_TOPIC,
+            std_msgs.msg.String,
+            callback
+          )
+          
+          while not rospy.is_shutdown():
+              if thread_stop_event.is_set():
+                break
+              rospy.sleep(0.1)
+              
+          subscriber.unregister()
+          rospy.loginfo("Voice stream monitor thread terminated.")
+
+      collision_thread = threading.Thread(target=collision_detection)
+      voice_thread = threading.Thread(target=voice_stream_monitor)
+      
+      if self.apply_collision_detection:
+          collision_thread.start()
+          
+      if self.apply_voice_monitor:
+          voice_thread.start()
+
+      outcome = super(placeholder, self).execute(userdata)
+
+      thread_stop_event.set()
+      if self.apply_collision_detection:
+          collision_thread.join()
+          normal_loginfo("Collision detection thread joined successfully.")
+          
+      if self.apply_voice_monitor:
+          voice_thread.join()
+          normal_loginfo("Voice monitor thread joined successfully.")
+          
+      if self.collision_status:
+          collision_detected_loginfo(self.__class__.__name__)
+          outcome = 'aborted'
+          self.collision_status = False
+          return str(self.__class__.__name__)
+        
+      # voice handle logic: maybe use a map
+      # if self.voice_command = ....
+        
+      return outcome
+
+
 def move_to_initial_door_open_position_callback(userdata, response):
     return generic_state_callback(userdata, 
                                   response, 
@@ -392,6 +547,7 @@ def move_to_initial_door_open_position_callback(userdata, response):
                                   'aborted')
 
 
+# . update cd
 class move_to_initial_door_open_position(smach_ros.ServiceState):
     def __init__(self
                  , target_position
@@ -749,6 +905,7 @@ def move_to_post_door_open_position_callback(userdata, response):
                                   'move_to_bowl_grasping_initial_position', 
                                   'aborted')
 
+
 # . update cd
 class move_to_post_door_open_position(smach_ros.ServiceState):
     def __init__(self
@@ -812,7 +969,6 @@ class move_to_post_door_open_position(smach_ros.ServiceState):
         outcome = super(move_to_post_door_open_position, self).execute(userdata)
           
       return outcome
-
 
 
 def move_to_bowl_grasping_initial_position_callback(userdata, response):
@@ -1063,7 +1219,6 @@ class bowl_grasp_generator(smach_ros.ServiceState):
         return outcome
 
 
-
 def move_to_bowl_handle_pose_callback(userdata, response):
     return generic_state_callback(userdata, 
                                   response, 
@@ -1213,8 +1368,6 @@ class grasp_bowl_handle(smach_ros.ServiceState):
         outcome = super(grasp_bowl_handle, self).execute(userdata)
           
       return outcome
-
-
 
 
 def move_to_bowl_grasping_post_position_callback(userdata, response):
@@ -1514,7 +1667,7 @@ def food_item_selector_callback(userdata, response):
     return generic_userdata_state_callback(userdata, 
                                            response, 
                                            'move_to_pre_skewer_pose', 
-                                           'aborted', 
+                                           'succeeded', 
                                            True)
     
 
@@ -1767,7 +1920,7 @@ class move_to_feeding_start_position(smach_ros.ServiceState):
                     self.collision_status = True
                     collision_thread_stop.set()
 
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+            subscriber = rospy.Subscriber(COLLISION_DETECTION_PRO_TOPIC, Bool, callback)
 
             while not rospy.is_shutdown():
                 if collision_thread_stop.is_set():
@@ -1798,11 +1951,24 @@ class move_to_feeding_start_position(smach_ros.ServiceState):
 
 
 def move_to_pre_skewer_pose_callback(userdata, response):
-    return generic_state_callback(userdata, 
-                                  response, 
-                                  'move_to_skewer_pose', 
-                                  'aborted')
+    # return generic_state_callback(userdata, 
+    #                               response, 
+    #                               'move_to_skewer_pose', 
+    #                               'aborted')
+    stack = inspect.stack()
+    caller_frame = stack[0]
+    function_name = caller_frame.function
+    state_name = function_name.replace('_callback', '')
 
+    if response.success and userdata.use_force_sensing:
+        success_loginfo(f"{state_name}: success")
+        return 'skewer_with_force_sensing'
+    elif response.success and not userdata.use_force_sensing:
+        success_loginfo(f"{state_name}: success")
+        return 'move_to_skewer_pose'        
+    else:
+        failure_loginfo(f"{state_name}: failed")
+        return 'aborted'
 
 # . update cd
 class move_to_pre_skewer_pose(smach_ros.ServiceState):
@@ -1901,6 +2067,77 @@ class move_to_skewer_pose(smach_ros.ServiceState):
     def request_cb(self, userdata, *args):
         target_pose = getattr(userdata, self.userdata_key)
         return kortex_motion_planning.srv.KortexSimpleCmpeRequest(target_pose)
+
+
+# An alternative
+def skewer_with_force_sensing_callback(userdata, response):
+    return generic_state_callback(userdata, 
+                                  response, 
+                                  'move_to_post_skewer_pose', 
+                                  'aborted')
+
+
+class skewer_with_force_sensing(smach_ros.ServiceState):
+    def __init__(self
+                 , request_flag
+                 , input_keys_sm
+                 , outcomes_sm
+                 , apply_collision_detection = False):
+        super(skewer_with_force_sensing, self).__init__(
+            service_name=UPRIGHT_SKEWER_SERVICE,
+            service_spec=kortex_motion_planning.srv.UprightSkewerAction,
+            request=kortex_motion_planning.srv.UprightSkewerActionRequest(True),
+            response_slots=['success'],
+            outcomes=outcomes_sm,
+            input_keys=input_keys_sm,
+            output_keys=input_keys_sm,
+            response_cb=skewer_with_force_sensing_callback
+        )
+        self.collision_status = False
+        self.apply_collision_detection = apply_collision_detection
+        
+    def execute(self, userdata):
+      if self.apply_collision_detection:
+        stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
+        collision_thread_stop = threading.Event()
+
+        def collision_detection():
+            
+            def callback(msg):
+                if msg.data:
+                    stop_client(kortex_driver.msg.Empty())
+                    stop_loginfo()
+                    self.collision_status = True
+                    collision_thread_stop.set()
+
+            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+
+            while not rospy.is_shutdown():
+                if collision_thread_stop.is_set():
+                  break
+                rospy.sleep(0.1)
+                
+            subscriber.unregister()
+            normal_loginfo("Collision detection thread terminated.")
+
+        collision_thread = threading.Thread(target=collision_detection)
+        collision_thread.start()
+
+        outcome = super(skewer_with_force_sensing, self).execute(userdata)
+
+        collision_thread_stop.set()
+        collision_thread.join()
+        normal_loginfo("Collision detection thread joined successfully.")
+        
+        if self.collision_status:
+            collision_detected_loginfo(self.__class__.__name__)
+            outcome = 'aborted'
+            self.collision_status = False
+            return str(self.__class__.__name__)
+      else:
+        outcome = super(skewer_with_force_sensing, self).execute(userdata)
+          
+      return outcome  
 
 
 def move_to_post_skewer_pose_callback(userdata, response):
@@ -2023,7 +2260,7 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
                     self.collision_status = True
                     collision_thread_stop.set()
 
-            subscriber = rospy.Subscriber(COLLISION_DETECTION_TOPIC, Bool, callback)
+            subscriber = rospy.Subscriber(COLLISION_DETECTION_PRO_TOPIC, Bool, callback)
 
             while not rospy.is_shutdown():
                 if collision_thread_stop.is_set():
@@ -2426,6 +2663,9 @@ def plan_to_feeding_pose_callback(userdata, response):
                                 'plan_to_feeding_pose')
 
 
+# 20231208 prof zhang is quite noisy in lab
+# 20231208 can some one just stuff a wheelchair in his mouth?
+
 # . update cd
 class plan_to_feeding_pose(smach_ros.ServiceState):
     def __init__(self
@@ -2570,83 +2810,81 @@ class execute_to_feeding_pose(smach_ros.ServiceState):
       return outcome
 
 
-def get_start_state(start):
-  
-    # parser logic not currently used
-    parser = argparse.ArgumentParser(description='Start state for the FSM')
-    parser.add_argument('--start', help='Specify the start state', default='door_open')
-    args = parser.parse_args(rospy.myargv()[1:])
-
-    start_state_map = {
-        'door_open': 'move_to_initial_door_open_position',
-        'bowl_grasping': 'move_to_bowl_grasping_initial_position',
-        'bowl_transfer': 'move_to_bowl_grasping_post_position', 
-        'utensil_fetching': 'get_utensil',
-        'food_skewering': 'move_to_feeding_start_position',
-        'food_transfer': 'move_to_feeding_initial_position'
-    }
-
-    return start_state_map.get(start, 'door_open')
-
-
 def main():
     rospy.init_node('feeding_task_state_machine')
 
     sm = CustomStateMachine(outcomes_sm, input_keys=input_keys_sm, output_keys=input_keys_sm)
     
-    # Functional parameters
-    use_opt = False
-    apply_utensil_fetching = False
-
-    # Initialize necessary data in feeding task
+    use_opt = get_ros_param("/fsmConfig/useOpt", False)
+    use_force_sensing = get_ros_param("/fsmConfig/useForceSensing", True)
+    feeding_pose_param = get_ros_param("foodTransfer/feedingPose")
+    feeding_initial_position_param = get_ros_param("/foodSkewer/feedingInitialPosition")
+    holder_position_param = get_ros_param("/utensil/holderPosition")
+    utensil_position_param = get_ros_param("/utensil/utensilPosition")
+    bowl_transfer_initial_position_param = get_ros_param("/bowlTransfer/initialPosition")
+    bowl_transfer_post_position_param = get_ros_param("/bowlTransfer/postPosition")
+    door_open_initial_position_param = get_ros_param("/doorOpen/initialPosition")
+    door_open_post_position_param = get_ros_param("/doorOpen/postPosition")
+    bowl_placement_pose_param = get_ros_param("/bowlTransfer/placementPose")
+    gripper_open_position_param = get_ros_param("/kortex/config/gripperOpenPosition", 0)
+    bowl_release_position_param = get_ros_param("/bowlTransfer/bowlReleaseGripperPosition")
+    bowl_handle_grasp_position_param = get_ros_param("/bowlTransfer/bowlGraspingGripperPosition")
+    grasp_door_handle_position_param = get_ros_param("/doorOpen/doorHandleGraspingGripperPosition")
+    reach_apriltag_flag_param = get_ros_param("/doorOpen/reachApriltagFlag")
+    door_open_flag_param = get_ros_param("/doorOpen/doorOpenFlag")
+    
     feeding_pose = Pose()
-    feeding_pose.position.x = -0.15135
-    feeding_pose.position.y = 0.235484
-    feeding_pose.position.z = 0.557796
-    feeding_pose.orientation.x = 0.3872724
-    feeding_pose.orientation.y = -0.4914169
-    feeding_pose.orientation.z = -0.604657
-    feeding_pose.orientation.w = 0.4928685
+    if isinstance(feeding_pose_param, (list, tuple)) and len(feeding_pose_param) >= 7:
+        feeding_pose.position.x = feeding_pose_param[0]
+        feeding_pose.position.y = feeding_pose_param[1]
+        feeding_pose.position.z = feeding_pose_param[2]
+        feeding_pose.orientation.x = feeding_pose_param[3]
+        feeding_pose.orientation.y = feeding_pose_param[4]
+        feeding_pose.orientation.z = feeding_pose_param[5]
+        feeding_pose.orientation.w = feeding_pose_param[6]
+    else:
+        failure_loginfo("Invalid feeding_pose_param")
+                
+    feeding_initial_position =kortex_motion_planning.msg.JointPositions()
+    feeding_initial_position.joint_positions = feeding_initial_position_param
+    print('feeding_initial: ', feeding_initial_position)
     
-    feeding_initial_position = JointPositions()
-    feeding_initial_position.joint_positions = [0.021247, -0.26079, 3.15111, -2.14524, 0.060838, -0.90679, 1.58046]
-    holder_position = JointPositions()
-    holder_position.joint_positions = [0.302989, -0.31447, 3.09643, -2.40708, 6.26457, -1.063090, 1.81463]
-    utensil_position = JointPositions()    
-    utensil_position.joint_positions = [0.206082, -0.305769, 2.64442, -2.3651, 6.09785, -1.06134, 1.36814]
-    bowl_transfer_initial_position = JointPositions()
-    bowl_transfer_initial_position.joint_positions = [1.12982, 0.575937, 3.04003, 4.18295 - 6.28, 5.67489, 1.18636, 0.290636]
+    holder_position = kortex_motion_planning.msg.JointPositions()
+    holder_position.joint_positions = holder_position_param
     
-    bowl_transfer_post_position = JointPositions()
-    bowl_transfer_post_position.joint_positions = [1.38236, 0.466606, 3.09348, 4.05094 - 6.28, 6.28229, 1.04642, 0.070713] 
+    utensil_position = kortex_motion_planning.msg.JointPositions()    
+    utensil_position.joint_positions = utensil_position_param
     
-    door_open_initial_position = JointPositions()
-    door_open_initial_position.joint_positions = [1.3686876090750437, 0.28184642233856894, 3.144328097731239, 4.023280977312391 - 6.28, 6.009197207678883, 0.9603996509598605, 1.6590017452006982]
+    bowl_transfer_initial_position = kortex_motion_planning.msg.JointPositions()
+    bowl_transfer_initial_position.joint_positions = bowl_transfer_initial_position_param
+    
+    bowl_transfer_post_position = kortex_motion_planning.msg.JointPositions()
+    bowl_transfer_post_position.joint_positions = bowl_transfer_post_position_param
+    
+    door_open_initial_position = kortex_motion_planning.msg.JointPositions()
+    door_open_initial_position.joint_positions = door_open_initial_position_param
+    
+    door_open_post_position = kortex_motion_planning.msg.JointPositions()
+    door_open_post_position.joint_positions = door_open_post_position_param
 
-    door_open_post_position = JointPositions()
-    door_open_post_position.joint_positions = [0.10398898576184974, 0.6798720661633672, 3.210061920145531, 4.894967873435816 - 6.28, 4.4163636859539315, 1.9033339091773762, 2.655396283861733]
-
-       
     bowl_placement_pose = Pose()
-    bowl_placement_pose.position.x = 0.369719
-    bowl_placement_pose.position.y = -0.128634    
-    bowl_placement_pose.position.z = 0.118447    
-    bowl_placement_pose.orientation.x = -0.5591718754025408
-    bowl_placement_pose.orientation.y = -0.5122518858574863
-    bowl_placement_pose.orientation.z = -0.4673708958580917
-    bowl_placement_pose.orientation.w = 0.4544108987459028
-    # bowl_placement_quaternion = (bowl_placement_pose.orientation.x
-    #                              , bowl_placement_pose.orientation.y
-    #                              , bowl_placement_pose.orientation.z
-    #                              , bowl_placement_pose.orientation.w)    
-    # bowl_placement_pose.orientation = normalize_quaternion(bowl_placement_quaternion)
-    
-    gripper_open_position = 0
-    bowl_release_position = 0.5
-    bowl_handle_grasp_position = 1
-    grasp_door_handle_position = 0.8
-    reach_apriltag_flag = True
-    door_open_flag = True
+    if isinstance(bowl_placement_pose_param, (list, tuple)) and len(bowl_placement_pose_param) >= 7:
+        bowl_placement_pose.position.x = bowl_placement_pose_param[0]
+        bowl_placement_pose.position.y = bowl_placement_pose_param[1]
+        bowl_placement_pose.position.z = bowl_placement_pose_param[2]
+        bowl_placement_pose.orientation.x = bowl_placement_pose_param[3]
+        bowl_placement_pose.orientation.y = bowl_placement_pose_param[4]
+        bowl_placement_pose.orientation.z = bowl_placement_pose_param[5]
+        bowl_placement_pose.orientation.w = bowl_placement_pose_param[6]
+    else:
+        failure_loginfo("Invalid bowl_placement_pose_param")
+
+    gripper_open_position = gripper_open_position_param
+    bowl_release_position = bowl_release_position_param
+    bowl_handle_grasp_position = bowl_handle_grasp_position_param
+    grasp_door_handle_position = grasp_door_handle_position_param
+    reach_apriltag_flag = reach_apriltag_flag_param
+    door_open_flag = door_open_flag_param
     
     
     sm.userdata.motion_plan = JointTrajectory()
@@ -2664,19 +2902,40 @@ def main():
     
     sm.userdata.bowl_handle_pose = Pose()
     
-    # Remap variables
+    sm.userdata.use_force_sensing = use_force_sensing
+    sm.userdata.use_opt = use_opt
+    
     sm.userdata.feeding_pose = feeding_pose
     sm.userdata.feeding_start_position = feeding_initial_position
     sm.userdata.feeding_initial_position = feeding_initial_position
     sm.userdata.bowl_placement_pose = bowl_placement_pose
     # sm.userdata.update_anygrasp = update_anygrasp
+
+    def get_start_state(start):
+      
+        # * parser logic not currently used
+        parser = argparse.ArgumentParser(description='Start state for the FSM')
+        parser.add_argument('--start', help='Specify the start state', default='door_open')
+        args = parser.parse_args(rospy.myargv()[1:])
+
+        start_state_map = {
+            'door_open': 'move_to_initial_door_open_position'
+          , 'bowl_grasping': 'move_to_bowl_grasping_initial_position'
+          , 'bowl_transfer': 'move_to_bowl_grasping_post_position'
+          , 'utensil_fetching': 'get_utensil'
+          , 'food_skewering': 'move_to_feeding_start_position'
+          , 'food_transfer': 'move_to_feeding_initial_position'
+          , 'custom1': 'plan_to_feeding_pose'
+        }
+
+        return start_state_map.get(start, 'door_open')
     
-    start_subtask = 'utensil_fetching'
+    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'door_open')
     initial_state = get_start_state(start_subtask)
+    # initial_state = 'move_to_bowl_grasping_initial_position'
     
     # Open the container
     with sm:
-        # sm.set_initial_state()
         sm.set_initial_state([initial_state])
         smach.StateMachine.add('move_to_initial_door_open_position'
                                , move_to_initial_door_open_position(
@@ -2836,7 +3095,7 @@ def main():
                                , transitions=transition_sm
                                , remapping=remapping_sm)
 
-        if use_opt:
+        if sm.userdata.use_opt:
             smach.StateMachine.add('plan_to_pre_skewer_pose',
                                   plan_to_pre_skewer_pose(
                                     MOTION_PLANNER_SERVICE,
@@ -2902,18 +3161,26 @@ def main():
                                   transitions=transition_sm,
                                   remapping=remapping_sm)    
 
+            if sm.userdata.use_force_sensing:
+              smach.StateMachine.add('skewer_with_force_sensing'
+                                    , skewer_with_force_sensing(
+                                      sm.userdata.feeding_initial_position
+                                      , input_keys_sm
+                                      , outcomes_sm)
+                                    , transitions=transition_sm
+                                    , remapping=remapping_sm)
 
-            smach.StateMachine.add('move_to_skewer_pose',
-                                  move_to_skewer_pose(
-                                    SIMPLE_CMPE_SERVICE,
-                                    kortex_motion_planning.srv.KortexSimpleCmpe,
-                                    input_keys_sm,
-                                    outcomes_sm,
-                                    'skewer_pose'),
-                                  transitions=transition_sm,
-                                  remapping=remapping_sm)    
-            
-
+            else:
+              smach.StateMachine.add('move_to_skewer_pose',
+                                    move_to_skewer_pose(
+                                      SIMPLE_CMPE_SERVICE,
+                                      kortex_motion_planning.srv.KortexSimpleCmpe,
+                                      input_keys_sm,
+                                      outcomes_sm,
+                                      'skewer_pose'),
+                                    transitions=transition_sm,
+                                    remapping=remapping_sm)    
+              
             smach.StateMachine.add('move_to_post_skewer_pose',
                                   move_to_post_skewer_pose(
                                     SIMPLE_CMPE_SERVICE,
