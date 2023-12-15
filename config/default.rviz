@@ -11,7 +11,7 @@ Panels:
         - /TF1/Tree1
         - /PointCloud22
       Splitter Ratio: 0.596069872379303
-    Tree Height: 814
+    Tree Height: 603
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -193,36 +193,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        anygrasp/grasp_0:
-          Value: true
-        anygrasp/grasp_1:
-          Value: false
-        anygrasp/grasp_10:
-          Value: true
-        anygrasp/grasp_11:
-          Value: true
-        anygrasp/grasp_12:
-          Value: true
-        anygrasp/grasp_13:
-          Value: true
-        anygrasp/grasp_14:
-          Value: true
-        anygrasp/grasp_2:
-          Value: false
-        anygrasp/grasp_3:
-          Value: false
-        anygrasp/grasp_4:
-          Value: false
-        anygrasp/grasp_5:
-          Value: true
-        anygrasp/grasp_6:
-          Value: true
-        anygrasp/grasp_7:
-          Value: true
-        anygrasp/grasp_8:
-          Value: true
-        anygrasp/grasp_9:
-          Value: true
         base_link:
           Value: false
         bracelet_link:
@@ -269,11 +239,7 @@ Visualization Manager:
           Value: false
         spherical_wrist_2_link:
           Value: false
-        tag_3:
-          Value: true
         tool_frame:
-          Value: false
-        world:
           Value: false
       Marker Alpha: 1
       Marker Scale: 0.30000001192092896
@@ -282,78 +248,37 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        world:
-          base_link:
-            anygrasp/grasp_0:
-              {}
-            anygrasp/grasp_1:
-              {}
-            anygrasp/grasp_10:
-              {}
-            anygrasp/grasp_11:
-              {}
-            anygrasp/grasp_12:
-              {}
-            anygrasp/grasp_13:
-              {}
-            anygrasp/grasp_14:
-              {}
-            anygrasp/grasp_2:
-              {}
-            anygrasp/grasp_3:
-              {}
-            anygrasp/grasp_4:
-              {}
-            anygrasp/grasp_5:
-              {}
-            anygrasp/grasp_6:
-              {}
-            anygrasp/grasp_7:
-              {}
-            anygrasp/grasp_8:
-              {}
-            anygrasp/grasp_9:
-              {}
-            shoulder_link:
-              half_arm_1_link:
-                half_arm_2_link:
-                  forearm_link:
-                    spherical_wrist_1_link:
-                      spherical_wrist_2_link:
-                        {}
-          bracelet_link:
-            {}
-          camera_color_frame:
-            tag_3:
-              {}
-          camera_depth_frame:
-            {}
-          camera_link:
-            {}
-          end_effector_link:
-            {}
-          left_inner_finger:
-            {}
-          left_inner_finger_pad:
-            {}
-          left_outer_finger:
-            {}
-          left_outer_knuckle:
-            {}
-          right_inner_finger_pad:
-            {}
-          right_outer_finger:
-            right_inner_finger:
-              {}
-          robotiq_arg2f_base_link:
-            left_inner_knuckle:
-              {}
-            right_inner_knuckle:
-              {}
-            right_outer_knuckle:
-              {}
-          tool_frame:
-            {}
+        base_link:
+          shoulder_link:
+            half_arm_1_link:
+              half_arm_2_link:
+                forearm_link:
+                  spherical_wrist_1_link:
+                    spherical_wrist_2_link:
+                      bracelet_link:
+                        end_effector_link:
+                          camera_color_frame:
+                            {}
+                          camera_link:
+                            camera_depth_frame:
+                              {}
+                          robotiq_arg2f_base_link:
+                            left_inner_knuckle:
+                              {}
+                            left_outer_knuckle:
+                              left_outer_finger:
+                                left_inner_finger:
+                                  left_inner_finger_pad:
+                                    {}
+                            right_inner_knuckle:
+                              {}
+                            right_outer_knuckle:
+                              right_outer_finger:
+                                right_inner_finger:
+                                  right_inner_finger_pad:
+                                    {}
+                          tool_frame:
+                            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -385,18 +310,6 @@ Visualization Manager:
       Use rainbow: true
       Value: false
     - Class: rviz/Image
-      Enabled: true
-      Image Topic: /camera/color/image_rect_color
-      Max Value: 1
-      Median window: 5
-      Min Value: 0
-      Name: Image
-      Normalize Range: true
-      Queue Size: 2
-      Transport Hint: raw
-      Unreliable: false
-      Value: true
-    - Class: rviz/Image
       Enabled: false
       Image Topic: /camera/color/image_rect_color
       Max Value: 1
@@ -408,6 +321,18 @@ Visualization Manager:
       Transport Hint: raw
       Unreliable: false
       Value: false
+    - Class: rviz/Image
+      Enabled: true
+      Image Topic: /camera/color/image_rect_color
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -441,7 +366,7 @@ Visualization Manager:
       Marker Topic: /tesseract/display_tool_path
       Name: MarkerArray
       Namespaces:
-        tesseract/segment_0/poses: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -488,19 +413,19 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.21020366251468658
+      Pitch: 0.215203657746315
       Target Frame: <Fixed Frame>
-      Yaw: 1.4058700799942017
+      Yaw: 1.4008700847625732
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1366
+  Height: 1055
   Hide Left Dock: false
   Hide Right Dock: true
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001cc0000051bfc020000000efb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006e00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afc0000001a00000375000000f100fffffffa000000020100000003fb0000000a0049006d00610067006502000001d5000002d800000280000001e0fb0000000c00430061006d0065007200610000000000ffffffff0000000000000000fb000000100044006900730070006c0061007900730100000000000002510000016100fffffffb0000000a0049006d00610067006501000003960000019f0000001900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d00650072006102000001500000017500000280000001e0fb0000000c00430061006d006500720061020000049b0000025c0000034200000239fb0000000c00430061006d00650072006100000003ff000000d70000000000000000fb0000000a0049006d00610067006500000002f7000000df0000000000000000fb0000000a0049006d00610067006501000003de000000d50000000000000000000000010000010f00000419fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fc00000047000004190000000000fffffffa000000000100000002fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000000a0056006900650077007300000003b20000010f0000010200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000592000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000061e00000064fc0100000002fc000000000000061e0000000000fffffffa000000000200000002fb0000000a0049006d00610067006503000000690000033e00000300000001befb0000000800540069006d006500000002d4000000400000004000fffffffb0000000800540069006d00650100000000000004500000000000000000000004a20000051b00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000161000003e4fc020000000efb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006e00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afc0000001a000002a2000000f100fffffffa000000020100000003fb0000000a0049006d00610067006502000001d5000002d800000280000001e0fb0000000c00430061006d0065007200610000000000ffffffff0000000000000000fb000000100044006900730070006c0061007900730100000000000002510000016100fffffffb0000000a0049006d00610067006501000002c30000013b0000001900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000c00430061006d00650072006102000001500000017500000280000001e0fb0000000c00430061006d006500720061020000049b0000025c0000034200000239fb0000000c00430061006d00650072006100000003ff000000d70000000000000000fb0000000a0049006d00610067006500000002f7000000df0000000000000000fb0000000a0049006d00610067006501000003de000000d50000000000000000000000010000010f00000419fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fc00000047000004190000000000fffffffa000000000100000002fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000000a0056006900650077007300000003b20000010f0000010200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000592000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000061e00000064fc0100000002fc000000000000061e0000000000fffffffa000000000200000002fb0000000a0049006d00610067006503000000690000033e00000300000001befb0000000800540069006d006500000002d4000000400000004000fffffffb0000000800540069006d006501000000000000045000000000000000000000041a000003e400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -509,6 +434,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1653
+  Width: 1410
   X: 88
-  Y: 34
+  Y: 345

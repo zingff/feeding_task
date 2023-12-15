@@ -33,7 +33,6 @@ rosConfig:
 foodTransfer:
   feedingPose: [-0.15135, 0.235484, 0.557796, 0.3872724, -0.4914169, -0.604657, 0.4928685]
 
-
 foodSkewer:
   uprightSkewerTwist: [0, 0, -0.02, 0, 0, 0]
   zeroSkewerTwist: [0, 0, 0.0, 0, 0, 0]
@@ -63,7 +62,6 @@ doorOpen:
   doorHandleGraspingGripperPosition: 0.8
   reachApriltagFlag: true
   doorOpenFlag: true
-
 
 kortex: 
   config:

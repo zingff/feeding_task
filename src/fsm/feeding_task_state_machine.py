@@ -33,7 +33,7 @@
 # √ mergy ku into kmp
 # √ add jlc in gcp
 # √ change service name to static constant form
-# // design voice control interface
+# // design voice control interface, to test
 # √ modfity use_opt and use_force_sensing to userdata
 # √ load all param in ros param server
   # √ fsm
@@ -329,6 +329,8 @@ class StateOutputStyle:
 def success_loginfo(msg):
     rospy.loginfo(StateOutputStyle.success + msg + StateOutputStyle.default)
 
+# 20231215 prof zhang is gone, a peaceful week
+# 20231215 wish he could never come back
 
 def warn_loginfo(msg):
     rospy.loginfo(StateOutputStyle.yellow + msg + StateOutputStyle.default)
