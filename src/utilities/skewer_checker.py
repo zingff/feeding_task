@@ -1,4 +1,4 @@
-#! /home/zing/anaconda3/envs/sam/bin/python
+#! /home/zing/anaconda3/envs/anygrasp/bin/python
 
 import rospy
 import open3d
