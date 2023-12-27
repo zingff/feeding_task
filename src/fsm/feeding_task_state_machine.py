@@ -33,7 +33,7 @@
 # √ mergy ku into kmp
 # √ add jlc in gcp
 # √ change service name to static constant form
-# // design voice control interface, to test
+
 # √ modfity use_opt and use_force_sensing to userdata
 # √ load all param in ros param server
   # √ fsm
@@ -50,6 +50,15 @@
 # * change color group by subtasks
 # * design new 3d print parts
 # * concder disposable fork
+
+# * 2023 LAST WEEK slave not liberated
+# // design voice control interface, to test
+# * questionnair for user test
+# * force method for status check
+# * semi-pseudo test for voice test
+  # * wakeup trigger
+  # * voice stream in ros topic
+  # * test it in fsm
 
 
 import argparse
