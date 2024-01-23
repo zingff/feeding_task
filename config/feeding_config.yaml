@@ -1,7 +1,7 @@
 fsmConfig:
   useOpt: false
   useForceSensing: true
-  startSubtask: door_open
+  startSubtask: utensil_fetching
 
 collisionDetection:
   basicTorqueThreshold: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
