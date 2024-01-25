@@ -59,6 +59,7 @@ include_directories(include
 add_service_files(
   FILES
   SkewerStatusCheck.srv
+  WaitForStart.srv
 )
 generate_messages(
   DEPENDENCIES

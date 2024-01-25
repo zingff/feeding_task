@@ -1,0 +1,5 @@
+<launch>
+    <group>
+        <node pkg="feeding_task" name="wait_for_start" type="wait_for_start.py" output="screen" required="true"/>
+    </group>  
+</launch>

@@ -1,6 +1,6 @@
 import speech_recognition as sr
 
-def speechtotext(language):
+def speech_to_text(language):
     recognizer = sr.Recognizer()
 
     # Capture audio from a microphone

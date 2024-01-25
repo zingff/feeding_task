@@ -1,0 +1,6 @@
+bool start_request
+
+---
+
+bool start_success
+string start_command

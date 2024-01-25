@@ -22,7 +22,7 @@ rosConfig:
     foodItemSelector: /grasp_generator
     getUtensil: /kortex_get_utensil_service
     skewerStatusChecker: skewer_status_checker
-    voiceStreamMontor: tbd
+    voiceStreamMontor: /fsm/voice_stream_monitor
     uprightSkewer: /kortex_upright_skewer_action_service
   simpleCMPEConfig:
     goalPositionTorlerance: 0.01
@@ -42,8 +42,8 @@ foodSkewer:
   skewerStatusChecker:
     pointCloudUpperLimit: 0.34
     pointCloudLowerLimit: 0.28
-    pointCloudRange: 0.06
-    pointCloudConfidence: 20
+    pointCloudRange: 0.06 # U = L + R
+    pointCloudConfidence: 50
 
 utensil:
   holderPosition: [0.302989, -0.31447, 3.09643, -2.40708, 6.26457, -1.063090, 1.81463]

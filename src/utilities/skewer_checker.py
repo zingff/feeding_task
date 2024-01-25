@@ -131,7 +131,7 @@ def skewer_status_check_service(req):
     if (req.skewer_checker_flag):
       point_cloud_confidence = get_ros_param(
         "/foodSkewer/skewerStatusChecker/pointCloudConfidence", 
-        20)
+        200)
       point_cloud_lower_limit = get_ros_param(
         "/foodSkewer/skewerStatusChecker/pointCloudLowerLimit", 
         0.28)
