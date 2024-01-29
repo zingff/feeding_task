@@ -590,6 +590,7 @@ def wait_for_start_callback(userdata, response, next_state_on_success, next_stat
     function_name = caller_frame.function
     state_name = function_name.replace('_callback', '')
     if response.start_success:
+      if response.start_command = 
       
     # if response.success:
     #     success_loginfo(f"{state_name}: success")
