@@ -150,6 +150,22 @@ add_dependencies(bite_transfer
   ${catkin_EXPORTED_TARGETS}
 )
 
+
+# voice recognization
+add_executable(iat_publish
+  src/ui/iat_publish.cpp
+  src/ui/linuxrec.c
+  src/ui/speech_recognizer.c
+)
+target_link_libraries(
+  iat_publish
+  ${catkin_LIBRARIES}
+  libmsc.so -ldl -lpthread -lm -lrt -lasound
+)
+add_dependencies(iat_publish 
+  ${catkin_EXPORTED_TARGETS}
+)
+
 # # Anygrasp publisher
 # add_executable(anygrasp_publisher
 # 	src/functions/anygrasp_publisher.cpp

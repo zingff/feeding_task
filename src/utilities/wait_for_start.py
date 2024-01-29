@@ -17,7 +17,7 @@ class VoiceMonitorService:
     def handle_wait_for_voice(self, request):
         desired_texts = [u'\u5F00\u59CB', u'\u7ED3\u675F', u'\u505C\u6B62']
 
-        rate = rospy.Rate(1)  # Adjust the rate
+        rate = rospy.Rate(5)  # Adjust the rate
 
         while not rospy.is_shutdown():
             if self.voice_text in desired_texts:

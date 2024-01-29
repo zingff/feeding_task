@@ -561,7 +561,8 @@ class placeholder(smach_ros.ServiceState):
         
       return outcome
 
-
+# 20240128: stupid sony, user test again
+# 20240128: stupid wdc & zh, fucking poster
 # TO modify
 def get_start_state(start):
   
@@ -590,14 +591,14 @@ def wait_for_start_callback(userdata, response, next_state_on_success, next_stat
     state_name = function_name.replace('_callback', '')
     if response.start_success:
       
-    if response.success:
-        success_loginfo(f"{state_name}: success")
-        userdata.success = success_flag_value
-        return next_state_on_success
-    else:
-        failure_loginfo(f"{state_name}: failed")
-        userdata.success = not success_flag_value
-        return next_state_on_failure
+    # if response.success:
+    #     success_loginfo(f"{state_name}: success")
+    #     userdata.success = success_flag_value
+    #     return next_state_on_success
+    # else:
+    #     failure_loginfo(f"{state_name}: failed")
+    #     userdata.success = not success_flag_value
+    #     return next_state_on_failure
 
 
 class wait_for_start(smach_ros.ServiceState):
