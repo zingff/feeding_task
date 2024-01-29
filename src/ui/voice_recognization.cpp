@@ -1,7 +1,3 @@
-/*
-* 语音听写(iFly Auto Transform)技术能够实时地将语音转换成对应的文字。
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,15 +6,27 @@
 #include "msp_cmn.h"
 #include "msp_errors.h"
 #include "speech_recognizer.h"
+#include "feeding_utilities.hpp"
 
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 
 int wakeupFlag = 1; 
 int resultFlag = 1;
+double session_interval = 3.0;
 
 #define FRAME_LEN	640 
 #define	BUFFER_SIZE	4096
+
+#define RESET   "\033[0m"
+#define RED     "\033[1;38;5;202m"
+#define GREEN   "\033[1;38;5;112m"
+#define YELLOW   "\033[1;38;5;227m"
+#define CYAN   "\033[1;38;5;123m"
+#define WHITE   "\033[1;38;5;195m"
+#define WHITE2   "\033[1;38;5;195m"
+
+
 
 /* Upload User words */
 static int upload_userwords()
@@ -55,7 +63,7 @@ static int upload_userwords()
 	}
 	userwords[len] = '\0';
 	
-	MSPUploadData("userwords", userwords, len, "sub = uup, dtt = userword", &ret); //ÉÏ´«ÓÃ»§´Ê±í
+	MSPUploadData("userwords", userwords, len, "sub = uup, dtt = userword", &ret);
 	if (MSP_SUCCESS != ret)
 	{
 		printf("\nMSPUploadData failed ! errorCode: %d \n", ret);
@@ -77,10 +85,10 @@ upload_exit:
 	return ret;
 }
 
-
 static void show_result(char *string, char is_over)
 {
 	printf("\rResult: [ %s ]", string);
+  // ROS_INFO_STREAM(GREEN << string.c_str() << RESET);
 	if(is_over)
 		putchar('\n');
 }
@@ -106,6 +114,7 @@ void on_result(const char *result, char is_last)
 		show_result(g_result, is_last);
 	}
 }
+
 void on_speech_begin()
 {
 	if (g_result)
@@ -116,8 +125,9 @@ void on_speech_begin()
 	g_buffersize = BUFFER_SIZE;
 	memset(g_result, 0, g_buffersize);
 
-	printf("Start Listening...\n");
+  ROS_INFO(CYAN "Start listening..." RESET);
 }
+
 void on_speech_end(int reason)
 {
 	if (reason == END_REASON_VAD_DETECT)
@@ -226,8 +236,8 @@ iat_exit:
 	sr_uninit(&iat);
 }
 
-/* demo recognize the audio from microphone */
-static void demo_mic(const char* session_begin_params)
+// Recognize the audio from microphone
+static void demo_mic(const char* session_begin_params, double session_interval)
 {
 	int errcode;
 	int i = 0;
@@ -249,8 +259,8 @@ static void demo_mic(const char* session_begin_params)
 	if (errcode) {
 		printf("start listen failed %d\n", errcode);
 	}
-	/* demo 15 seconds recording */
-	while(i++ < 15)
+
+	while(i++ < session_interval)
 		sleep(1);
 	errcode = sr_stop_listening(&iat);
 	if (errcode) {
@@ -260,26 +270,29 @@ static void demo_mic(const char* session_begin_params)
 	sr_uninit(&iat);
 }
 
+// For unclear use, maybe just a placeholder
 void wakeup(const std_msgs::String::ConstPtr& msg)
 {
-    printf("waking up\r\n");
+    // printf("waking up\r\n");
     // usleep(700*1000);
     wakeupFlag=1;
 }
 
-/* main thread: start/stop record ; query the result of recgonization.
- * record thread: record callback(data write)
- * helper thread: ui(keystroke detection)
- */
+// main thread: start/stop record ; query the result of recgonization.
+// record thread: record callback(data write)
+// helper thread: ui(keystroke detection)
+
 int main(int argc, char* argv[])
 {
   ros::init(argc, argv, "voice_recognition");
   ros::NodeHandle n;
   ros::Rate loop_rate(10);
 
+  getROSParam(n, "/ui/voiceRecognization/sessionInterval", session_interval);
+
   ros::Subscriber wakeup_sub = n.subscribe("voice_wakeup", 1000, wakeup);
-  ros::Publisher voice_word_pub = n.advertise<std_msgs::String>("voice_words", 1000);
-  ROS_INFO("Sleeping...");
+  ros::Publisher voice_word_pub = n.advertise<std_msgs::String>("/fsm/voice_recognization_results", 1000);
+  ROS_INFO(GREEN "Voice recognization node initialized!" RESET);
   int count = 0;
 
 	int ret = MSP_SUCCESS;
@@ -305,18 +318,15 @@ int main(int argc, char* argv[])
 		goto exit; // login fail, exit the program
 	}
 
-
   while (ros::ok())
   {
     if (wakeupFlag)
     {
-      ROS_INFO("Wake up!");
-      printf("Demo recognizing the speech from microphone\n");
-      printf("Speak in 15 seconds\n");
+      ROS_INFO(CYAN "Speak!" RESET);
 
-      demo_mic(session_begin_params);
+      demo_mic(session_begin_params, session_interval);
 
-      printf("15 sec passed\n");
+      ROS_INFO(YELLOW "This session has ended" RESET);
       wakeupFlag = 1;
     }
     if (resultFlag)
@@ -330,33 +340,6 @@ int main(int argc, char* argv[])
     loop_rate.sleep();
     count++;
   }
-  
-
-	// printf("Want to upload the user words ? \n0: No.\n1: Yes\n");
-	// scanf("%d", &upload_on);
-	// if (upload_on)
-	// {
-	// 	printf("Uploading the user words ...\n");
-	// 	ret = upload_userwords();
-	// 	if (MSP_SUCCESS != ret)
-	// 		goto exit;	
-	// 	printf("Uploaded successfully\n");
-	// }
-
-	// printf("Where the audio comes from?\n"
-	// 		"0: From a audio file.\n1: From microphone.\n");
-	// scanf("%d", &aud_src);
-	// if(aud_src != 0) {
-	// 	printf("Demo recognizing the speech from microphone\n");
-	// 	printf("Speak in 15 seconds\n");
-
-	// 	demo_mic(session_begin_params);
-
-	// 	printf("15 sec passed\n");
-	// } else {
-	// 	printf("Demo recgonizing the speech from a recorded audio file\n");
-	// 	demo_file("wav/iflytek02.wav", session_begin_params); 
-	// }
 
 exit:
 	MSPLogout(); // Logout...

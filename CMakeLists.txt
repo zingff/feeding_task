@@ -152,17 +152,18 @@ add_dependencies(bite_transfer
 
 
 # voice recognization
-add_executable(iat_publish
-  src/ui/iat_publish.cpp
+add_executable(voice_recognization
+  src/ui/voice_recognization.cpp
   src/ui/linuxrec.c
   src/ui/speech_recognizer.c
+  src/functions/feeding_utilities.cpp
 )
 target_link_libraries(
-  iat_publish
+  voice_recognization
   ${catkin_LIBRARIES}
   libmsc.so -ldl -lpthread -lm -lrt -lasound
 )
-add_dependencies(iat_publish 
+add_dependencies(voice_recognization 
   ${catkin_EXPORTED_TARGETS}
 )
 

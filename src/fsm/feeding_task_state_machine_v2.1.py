@@ -2939,6 +2939,7 @@ def main():
     
     start_subtask = get_ros_param("/fsmConfig/startSubtask", 'door_open')
     initial_state = get_start_state(start_subtask)
+    initial_state = "get_utensil"
     # initial_state = 'move_to_bowl_grasping_initial_position'
     
     # Open the container

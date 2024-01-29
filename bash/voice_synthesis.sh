@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd ~/Downloads/Linux_aisound_exp1227_aitalk_exp1227_awaken_exp1227_xtts_exp1227_iat1227_tts_online1227_eb0f596e/samples/tts_offline_sample
+source 64bit_make.sh
+
+cd ~/Downloads/Linux_aisound_exp1227_aitalk_exp1227_awaken_exp1227_xtts_exp1227_iat1227_tts_online1227_eb0f596e/bin
+./tts_offline_sample

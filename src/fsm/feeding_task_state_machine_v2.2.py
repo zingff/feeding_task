@@ -3,8 +3,8 @@
 # Note: a finite state machine for feeding task
 # Note: name of the manipulator: sausage lip arm (SLA)
 
-# change log: add start voice trigger
-# last update: 20240129
+# change log: this is a complete version without ui
+# version log: 20240126 hospital experiment
 
 # TODO List: 
 # √ concurrent sm for collision detection (cd is not always necessary)
@@ -55,14 +55,13 @@
 # * concder disposable fork
 
 # * 2023 LAST WEEK slave not liberated
-# √ design voice control interface, to test
-# √ questionnair for user test
+# // design voice control interface, to test
+# * questionnair for user test
 # * force method for status check
-# √ semi-pseudo test for voice test
-  # √ wakeup trigger
-  # √ voice stream in ros topic
-  # √ test it in fsm
-# * complete voice control
+# * semi-pseudo test for voice test
+  # * wakeup trigger
+  # * voice stream in ros topic
+  # * test it in fsm
 
 
 import argparse
@@ -71,7 +70,6 @@ import kortex_driver
 import kortex_motion_planning.msg
 from kortex_motion_planning.msg import JointPositions
 import rospy
-import rospkg
 import inspect
 import threading
 import smach
@@ -94,7 +92,6 @@ import kortex_driver.srv
 import kortex_driver.msg
 import numpy as np
 from utilities import get_ros_param
-import pygame
 
 
 STOP_SERVICE = get_ros_param("/kortex/service/stop", "/base/stop")
@@ -110,19 +107,8 @@ MOTION_EXECUTOR_SERVICE = get_ros_param("/rosConfig/service/motionExecutor", "/m
 FOOD_ITEM_SELECTOR_SERVICE = get_ros_param("/rosConfig/service/foodItemSelector", "/grasp_generator")
 GET_UTENSIL_SERVICE = get_ros_param("/rosConfig/service/getUtensil", "/kortex_get_utensil_service")
 SKEWER_STATUS_CHECKER_SERVICE = get_ros_param("/rosConfig/service/skewerStatusChecker", "skewer_status_checker")
-VOICE_STREAM_TOPIC = get_ros_param("/rosConfig/service/voiceStreamMonitor", "/fsm/voice_stream_monitor")
+VOICE_STREAM_TOPIC = get_ros_param("/rosConfig/service/voiceStreamMontor", "")
 UPRIGHT_SKEWER_SERVICE = get_ros_param("/rosConfig/service/uprightSkewer", "/kortex_upright_skewer_action_service")
-WAIT_FOR_START_SERVICE = "/fsm/wait_for_start"
-
-# voice response path
-rospack = rospkg.RosPack()
-package_name = "feeding_task"
-feeding_task_path = rospack.get_path(package_name)
-audio_sub_path = "/config/voice_response/"
-WAIT_FOR_START_VOICE_FILE = get_ros_param("/ui/tts/waitForStart", "/home/zing/mealAssistiveRobot/sla_ws/src/feeding_task/config/voice_response/waitForStart.wav")
-YOU_CAN_EAT_VOICE_FILE = get_ros_param("/ui/tts/youCanEat", "/home/zing/mealAssistiveRobot/sla_ws/src/feeding_task/config/voice_response/youCanEatAndMore.wav")
-WAIT_FOR_START_VOICE = feeding_task_path + audio_sub_path + WAIT_FOR_START_VOICE_FILE
-YOU_CAN_EAT_VOICE = feeding_task_path + audio_sub_path + YOU_CAN_EAT_VOICE_FILE
 
 outcomes_sm = [
     # An alternative motion planning logic for feeding cycle
@@ -141,9 +127,6 @@ outcomes_sm = [
     , 'succeeded'
     , 'aborted'
     , 'preempted'
-    
-    # 0. trigger
-    , 'wait_for_start'
     
     # 1. Door opening
     , 'move_to_initial_door_open_position'
@@ -202,8 +185,6 @@ input_keys_sm = [
     , 'bowl_handle_pose'
     , 'use_force_sensing'
     , 'use_opt'
-    , 'start_success'
-    , 'start_command'
                  ]
 
 
@@ -220,9 +201,6 @@ transition_sm = {
     , 'aborted': 'aborted'
     , 'collision_detected': 'aborted'
     , 'collision_detection': 'collision_detection'
-    
-    # 0. trigger
-    , 'wait_for_start': 'wait_for_start'
     
     # 1. Door opening
     , 'move_to_initial_door_open_position': 'move_to_initial_door_open_position'
@@ -277,9 +255,8 @@ remapping_sm = {
     , 'bowl_handle_pose': 'bowl_handle_pose'
     , 'use_force_sensing': 'use_force_sensing'
     , 'use_opt': 'use_opt'
-    , 'start_success': 'start_success'
-    , 'start_command': 'start_command'
 }
+
 
 
 def normalize_quaternion(quaternion):
@@ -366,7 +343,6 @@ def success_loginfo(msg):
 
 # 20231215 prof zhang is gone, a peaceful week
 # 20231215 wish he could never come back
-# 20231225 pity, he's back
 
 def warn_loginfo(msg):
     rospy.loginfo(StateOutputStyle.yellow + msg + StateOutputStyle.default)
@@ -420,15 +396,6 @@ def get_checked_ros_param(param_name, expected_type):
 
 def degrees2Radians(degrees):
     return (math.pi / 180.0) * degrees
-
-
-def play_wav(audio_path):
-    pygame.mixer.init()
-    pygame.mixer.music.load(audio_path)
-    pygame.mixer.music.play()
-
-    while pygame.mixer.music.get_busy():
-        pygame.time.Clock().tick(10)
 
 
 class CustomStateMachine(smach.StateMachine):
@@ -586,142 +553,6 @@ class placeholder(smach_ros.ServiceState):
         
       return outcome
 
-# 20240128: stupid sony, user test again
-# 20240128: stupid wdc & zh, fucking poster
-# TO modify
-def get_start_state(start):
-  
-    # * parser logic not currently used
-    parser = argparse.ArgumentParser(description='Start state for the FSM')
-    parser.add_argument('--start', help='Specify the start state', default='door_open')
-    args = parser.parse_args(rospy.myargv()[1:])
-
-    start_state_map = {
-        'door_open': 'move_to_initial_door_open_position'
-      , 'bowl_grasping': 'move_to_bowl_grasping_initial_position'
-      , 'bowl_transfer': 'move_to_bowl_grasping_post_position'
-      , 'utensil_fetching': 'get_utensil'
-      , 'food_skewering': 'move_to_feeding_start_position'
-      , 'food_transfer': 'move_to_feeding_initial_position'
-      , 'custom1': 'plan_to_feeding_pose'
-    }
-
-    return start_state_map.get(start, 'door_open')
-
-
-def wait_for_start_callback(userdata, response):
-    stack = inspect.stack()
-    caller_frame = stack[0]
-    function_name = caller_frame.function
-    state_name = function_name.replace('_callback', '')
-    if response.start_success:
-      rospy.loginfo(StateOutputStyle.success + "Received start signal." + StateOutputStyle.default)
-      return "get_utensil"
-    else:
-      return "wait_for_start"
-
-
-class wait_for_start(smach_ros.ServiceState):
-    def __init__(self
-                 , target_position
-                 , input_keys_sm
-                 , outcomes_sm
-                 , apply_collision_detection = False
-                 , apply_voice_monitor = False):
-        super(wait_for_start, self).__init__(
-            service_name=WAIT_FOR_START_SERVICE,
-            service_spec=feeding_task.srv.WaitForStart,
-            request=feeding_task.srv.WaitForStartRequest(
-              True),
-            response_slots=['start_success', 'start_command'],
-            outcomes=outcomes_sm,
-            input_keys=input_keys_sm,
-            output_keys=input_keys_sm,
-            response_cb=wait_for_start_callback
-        )
-        self.collision_status = False
-        self.apply_collision_detection = apply_collision_detection
-        self.voice_command_received = False
-        self.apply_voice_monitor = apply_voice_monitor
-        self.voice_command = std_msgs.msg.String()
-        
-    def execute(self, userdata):
-      play_wav(WAIT_FOR_START_VOICE)
-      stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
-      thread_stop_event = threading.Event()
-
-      def collision_detection():
-          def callback(msg):
-              if msg.data:
-                  stop_client(kortex_driver.msg.Empty())
-                  stop_loginfo()
-                  self.collision_status = True
-                  thread_stop_event.set()
-
-          subscriber = rospy.Subscriber(
-            COLLISION_DETECTION_TOPIC, 
-            Bool, 
-            callback)
-
-          while not rospy.is_shutdown():
-              if thread_stop_event.is_set():
-                break
-              rospy.sleep(0.1)
-              
-          subscriber.unregister()
-          normal_loginfo("Collision detection thread terminated.")
-          
-      def voice_stream_monitor():
-          def callback(msg):
-              rospy.loginfo("Voice command received: " + msg.data)
-              self.voice_command_received = True
-              self.voice_command = msg.data()
-              thread_stop_event.set()
-          
-          subscriber = rospy.Subscriber(
-            VOICE_STREAM_TOPIC,
-            std_msgs.msg.String,
-            callback
-          )
-          
-          while not rospy.is_shutdown():
-              if thread_stop_event.is_set():
-                break
-              rospy.sleep(0.1)
-              
-          subscriber.unregister()
-          rospy.loginfo("Voice stream monitor thread terminated.")
-
-      collision_thread = threading.Thread(target=collision_detection)
-      voice_thread = threading.Thread(target=voice_stream_monitor)
-      
-      if self.apply_collision_detection:
-          collision_thread.start()
-          
-      if self.apply_voice_monitor:
-          voice_thread.start()
-
-      outcome = super(wait_for_start, self).execute(userdata)
-
-      thread_stop_event.set()
-      if self.apply_collision_detection:
-          collision_thread.join()
-          normal_loginfo("Collision detection thread joined successfully.")
-          
-      if self.apply_voice_monitor:
-          voice_thread.join()
-          normal_loginfo("Voice monitor thread joined successfully.")
-          
-      if self.collision_status:
-          collision_detected_loginfo(self.__class__.__name__)
-          outcome = 'aborted'
-          self.collision_status = False
-          return str(self.__class__.__name__)
-        
-      # voice handle logic: maybe use a map
-      # if self.voice_command = ....
-        
-      return outcome
 
 def move_to_initial_door_open_position_callback(userdata, response):
     return generic_state_callback(userdata, 
@@ -2921,27 +2752,11 @@ class plan_to_feeding_pose(smach_ros.ServiceState):
       return outcome      
 
 
-# def execute_to_feeding_pose_callback(userdata, response):
-#   return generic_state_callback(userdata, 
-#                                 response, 
-#                                 'move_to_feeding_start_position',
-#                                 'plan_to_feeding_pose') 
-
-
-def execute_to_feeding_pose_callback(userdata, response, next_state_on_success, next_state_on_failure):
-    stack = inspect.stack()
-    caller_frame = stack[0]
-    function_name = caller_frame.function
-    state_name = function_name.replace('_callback', '')
-
-    if response.success:
-        success_loginfo(f"{state_name}: success")
-        play_wav(YOU_CAN_EAT_VOICE)
-        return 'move_to_feeding_start_position'
-    else:
-        failure_loginfo(f"{state_name}: failed")
-        return 'plan_to_feeding_pose'
-
+def execute_to_feeding_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'move_to_feeding_start_position',
+                                'plan_to_feeding_pose') 
 
 
 # .update cd 
@@ -3104,9 +2919,6 @@ def main():
     sm.userdata.use_force_sensing = use_force_sensing
     sm.userdata.use_opt = use_opt
     
-    sm.userdata.start_command = ''
-    sm.userdata.start_success = False
-    
     sm.userdata.feeding_pose = feeding_pose
     sm.userdata.feeding_start_position = feeding_initial_position
     sm.userdata.feeding_initial_position = feeding_initial_position
@@ -3128,27 +2940,17 @@ def main():
           , 'food_skewering': 'move_to_feeding_start_position'
           , 'food_transfer': 'move_to_feeding_initial_position'
           , 'custom1': 'plan_to_feeding_pose'
-          , 'wait_for_start': 'wait_for_start'
         }
 
         return start_state_map.get(start, 'door_open')
     
-    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'utensil_fetching')
+    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'door_open')
     initial_state = get_start_state(start_subtask)
     # initial_state = 'move_to_bowl_grasping_initial_position'
     
     # Open the container
     with sm:
         sm.set_initial_state([initial_state])
- 
-        smach.StateMachine.add('wait_for_start'
-                               , wait_for_start(
-                                 door_open_initial_position
-                                 , input_keys_sm
-                                 , outcomes_sm)
-                               , transitions=transition_sm
-                               , remapping=remapping_sm) 
-        
         smach.StateMachine.add('move_to_initial_door_open_position'
                                , move_to_initial_door_open_position(
                                  door_open_initial_position

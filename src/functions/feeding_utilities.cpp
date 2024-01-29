@@ -1,7 +1,5 @@
 #include "feeding_utilities.hpp"
 
-
-
 template <typename ParamType>
 bool getROSParam(ros::NodeHandle nh, const std::string& param_name, ParamType& param_variable) {
   if (!nh.getParam(param_name, param_variable)) {
@@ -15,7 +13,3 @@ template bool getROSParam(ros::NodeHandle nh, const std::string& param_name, int
 template bool getROSParam(ros::NodeHandle nh, const std::string& param_name, double& param_variable);
 template bool getROSParam(ros::NodeHandle nh, const std::string& param_name, std::string& param_variable);
 template bool getROSParam(ros::NodeHandle nh, const std::string& param_name, std::vector<double>& param_variable);
-
-
-
-

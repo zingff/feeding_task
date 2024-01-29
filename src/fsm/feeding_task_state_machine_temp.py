@@ -62,6 +62,7 @@
 
 
 import argparse
+from turtle import goto
 import anygrasp_generation
 import kortex_driver
 import kortex_motion_planning.msg
@@ -584,22 +585,16 @@ def get_start_state(start):
     return start_state_map.get(start, 'door_open')
 
 
-def wait_for_start_callback(userdata, response, next_state_on_success, next_state_on_failure, success_flag_value):
+def wait_for_start_callback(userdata, response):
     stack = inspect.stack()
     caller_frame = stack[0]
     function_name = caller_frame.function
     state_name = function_name.replace('_callback', '')
     if response.start_success:
-      if response.start_command = 
-      
-    # if response.success:
-    #     success_loginfo(f"{state_name}: success")
-    #     userdata.success = success_flag_value
-    #     return next_state_on_success
-    # else:
-    #     failure_loginfo(f"{state_name}: failed")
-    #     userdata.success = not success_flag_value
-    #     return next_state_on_failure
+      rospy.loginfo(StateOutputStyle.success + "Received start signal." + StateOutputStyle.default)
+      return "get_utensil"
+    else:
+      return "wait_for_start"
 
 
 class wait_for_start(smach_ros.ServiceState):
@@ -618,7 +613,7 @@ class wait_for_start(smach_ros.ServiceState):
             outcomes=outcomes_sm,
             input_keys=input_keys_sm,
             output_keys=input_keys_sm,
-            response_cb='wait_for_start_callback'
+            response_cb=wait_for_start_callback
         )
         self.collision_status = False
         self.apply_collision_detection = apply_collision_detection
@@ -3068,6 +3063,9 @@ def main():
     sm.userdata.use_force_sensing = use_force_sensing
     sm.userdata.use_opt = use_opt
     
+    sm.userdata.start_command = ''
+    sm.userdata.start_success = False
+    
     sm.userdata.feeding_pose = feeding_pose
     sm.userdata.feeding_start_position = feeding_initial_position
     sm.userdata.feeding_initial_position = feeding_initial_position
@@ -3089,17 +3087,27 @@ def main():
           , 'food_skewering': 'move_to_feeding_start_position'
           , 'food_transfer': 'move_to_feeding_initial_position'
           , 'custom1': 'plan_to_feeding_pose'
+          , 'wait_for_start': 'wait_for_start'
         }
 
         return start_state_map.get(start, 'door_open')
     
-    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'door_open')
+    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'utensil_fetching')
     initial_state = get_start_state(start_subtask)
     # initial_state = 'move_to_bowl_grasping_initial_position'
     
     # Open the container
     with sm:
         sm.set_initial_state([initial_state])
+ 
+        smach.StateMachine.add('wait_for_start'
+                               , wait_for_start(
+                                 door_open_initial_position
+                                 , input_keys_sm
+                                 , outcomes_sm)
+                               , transitions=transition_sm
+                               , remapping=remapping_sm) 
+        
         smach.StateMachine.add('move_to_initial_door_open_position'
                                , move_to_initial_door_open_position(
                                  door_open_initial_position

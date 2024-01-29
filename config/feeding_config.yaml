@@ -1,7 +1,7 @@
 fsmConfig:
   useOpt: false
   useForceSensing: true
-  startSubtask: utensil_fetching
+  startSubtask: wait_for_start
 
 collisionDetection:
   basicTorqueThreshold: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
@@ -73,3 +73,10 @@ kortex:
     sendGripperCommand: /base/send_gripper_command
     sendTwistCommand: /base/send_twist_command
     stop: /base/stop
+
+ui:
+  voiceRecognization:
+    sessionInterval: 3
+  tts: 
+    waitForStart: waitForStart.wav
+    youCanEat: youCanEat.wav

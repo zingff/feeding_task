@@ -71,7 +71,6 @@ import kortex_driver
 import kortex_motion_planning.msg
 from kortex_motion_planning.msg import JointPositions
 import rospy
-import rospkg
 import inspect
 import threading
 import smach
@@ -113,16 +112,6 @@ SKEWER_STATUS_CHECKER_SERVICE = get_ros_param("/rosConfig/service/skewerStatusCh
 VOICE_STREAM_TOPIC = get_ros_param("/rosConfig/service/voiceStreamMonitor", "/fsm/voice_stream_monitor")
 UPRIGHT_SKEWER_SERVICE = get_ros_param("/rosConfig/service/uprightSkewer", "/kortex_upright_skewer_action_service")
 WAIT_FOR_START_SERVICE = "/fsm/wait_for_start"
-
-# voice response path
-rospack = rospkg.RosPack()
-package_name = "feeding_task"
-feeding_task_path = rospack.get_path(package_name)
-audio_sub_path = "/config/voice_response/"
-WAIT_FOR_START_VOICE_FILE = get_ros_param("/ui/tts/waitForStart", "/home/zing/mealAssistiveRobot/sla_ws/src/feeding_task/config/voice_response/waitForStart.wav")
-YOU_CAN_EAT_VOICE_FILE = get_ros_param("/ui/tts/youCanEat", "/home/zing/mealAssistiveRobot/sla_ws/src/feeding_task/config/voice_response/youCanEatAndMore.wav")
-WAIT_FOR_START_VOICE = feeding_task_path + audio_sub_path + WAIT_FOR_START_VOICE_FILE
-YOU_CAN_EAT_VOICE = feeding_task_path + audio_sub_path + YOU_CAN_EAT_VOICE_FILE
 
 outcomes_sm = [
     # An alternative motion planning logic for feeding cycle
@@ -646,7 +635,6 @@ class wait_for_start(smach_ros.ServiceState):
         self.voice_command = std_msgs.msg.String()
         
     def execute(self, userdata):
-      play_wav(WAIT_FOR_START_VOICE)
       stop_client = rospy.ServiceProxy(STOP_SERVICE, kortex_driver.srv.Stop)
       thread_stop_event = threading.Event()
 
@@ -2921,27 +2909,11 @@ class plan_to_feeding_pose(smach_ros.ServiceState):
       return outcome      
 
 
-# def execute_to_feeding_pose_callback(userdata, response):
-#   return generic_state_callback(userdata, 
-#                                 response, 
-#                                 'move_to_feeding_start_position',
-#                                 'plan_to_feeding_pose') 
-
-
-def execute_to_feeding_pose_callback(userdata, response, next_state_on_success, next_state_on_failure):
-    stack = inspect.stack()
-    caller_frame = stack[0]
-    function_name = caller_frame.function
-    state_name = function_name.replace('_callback', '')
-
-    if response.success:
-        success_loginfo(f"{state_name}: success")
-        play_wav(YOU_CAN_EAT_VOICE)
-        return 'move_to_feeding_start_position'
-    else:
-        failure_loginfo(f"{state_name}: failed")
-        return 'plan_to_feeding_pose'
-
+def execute_to_feeding_pose_callback(userdata, response):
+  return generic_state_callback(userdata, 
+                                response, 
+                                'move_to_feeding_start_position',
+                                'plan_to_feeding_pose') 
 
 
 # .update cd 

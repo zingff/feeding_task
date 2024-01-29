@@ -1,0 +1,5 @@
+<launch>
+  <group>
+    <node pkg="feeding_task" type="feeding_task_state_machine.py" name="feeding_task_state_machine" output="screen" required="true"/>
+  </group>
+</launch>
