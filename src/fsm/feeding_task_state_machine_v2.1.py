@@ -180,6 +180,7 @@ input_keys_sm = [
     , 'bowl_handle_pose'
     , 'use_force_sensing'
     , 'use_opt'
+    , 'food_locations'
                  ]
 
 
@@ -250,6 +251,7 @@ remapping_sm = {
     , 'bowl_handle_pose': 'bowl_handle_pose'
     , 'use_force_sensing': 'use_force_sensing'
     , 'use_opt': 'use_opt'
+    , 'food_locations': 'food_locations'
 }
 
 
@@ -1669,6 +1671,146 @@ class release_bowl(smach_ros.ServiceState):
           
       return outcome
 
+# original version
+# def food_item_selector_callback(userdata, response):
+#     return generic_userdata_state_callback(userdata, 
+#                                            response, 
+#                                            'move_to_pre_skewer_pose', 
+#                                            'succeeded', 
+#                                            True)
+    
+
+# class food_item_selector(smach_ros.ServiceState):
+#     def __init__(self
+#                  , request_key_
+#                  , input_keys_sm
+#                  , outcomes_sm
+#                  , apply_collision_detection = False):
+#         super(food_item_selector, self).__init__(
+#             service_name=FOOD_ITEM_SELECTOR_SERVICE,
+#             service_spec=anygrasp_generation.srv.AnyGraspGeneration,
+#             # request=anygrasp_generation.srv.AnyGraspGenerationRequest(update_anygrasp),
+#             request_key=request_key_,
+#             response_slots=['anygrasp_transforms', 'success'],
+#             outcomes=outcomes_sm,
+#             input_keys=input_keys_sm,
+#             output_keys=input_keys_sm,
+#             response_cb=food_item_selector_callback
+#         )
+#         self.anygrasp_tf_broadcaster = tf2_ros.TransformBroadcaster()
+#         self.grasp_namespace = 'anygrasp'
+#         self.collision_status = False
+#         self.apply_collision_detection = apply_collision_detection
+
+#     def execute(self, userdata):
+#         outcome = super(food_item_selector, self).execute(userdata)
+#         # if self.apply_collision_detection:
+#         if userdata.success:
+#             userdata.anygrasp_transform = userdata.anygrasp_transforms[0]
+#             # print('The best grasp from AnyGrasp: ')
+#             # print(userdata.anygrasp_transform)
+#             q_base_grasp = Quaternion()
+#             q_base_grasp.x = 0.7071068
+#             q_base_grasp.y = 0.7071068
+#             q_base_grasp.z = 0 
+#             q_base_grasp.w = 0 
+#             grasp_orientation = Vector3()
+#             grasp_orientation.x = degrees2Radians(180)
+#             grasp_orientation.y = degrees2Radians(0)
+#             grasp_orientation.z = degrees2Radians(90)
+#             grasp_quaternion_tf = tf.transformations.quaternion_from_euler(grasp_orientation.x, 
+#                                                               grasp_orientation.y, 
+#                                                               grasp_orientation.z)
+#             q_grasp = Quaternion()
+#             # q_grasp.x = grasp_quaternion_tf[0]
+#             # q_grasp.y = grasp_quaternion_tf[1]
+#             # q_grasp.z = grasp_quaternion_tf[2]
+#             # q_grasp.w = grasp_quaternion_tf[3]
+#             attributes = ['x', 'y', 'z', 'w']
+#             for attr, value in zip(attributes, grasp_quaternion_tf):
+#                 setattr(q_grasp, attr, value)
+            
+#             # T_base_grasp
+#             T_base_grasp = Transform()
+#             T_base_grasp = userdata.anygrasp_transform 
+#             T_base_grasp.rotation = q_base_grasp
+#             # print("T_base_grasp: ", T_base_grasp)
+            
+#             # T_tool_grasp
+#             T_tool_grasp = Transform()
+#             p_tool_grasp = Vector3()
+#             p_tool_grasp.x = 0
+#             p_tool_grasp.y = -0.0
+#             p_tool_grasp.z = 0.17
+#             # p_tool_grasp.z = 0.180
+#             q_tool_grasp = Quaternion()
+#             q_tool_grasp.x = 0.00
+#             q_tool_grasp.y = 0.00
+#             q_tool_grasp.z = 0.00
+#             q_tool_grasp.w = 1.00
+#             T_tool_grasp.translation = p_tool_grasp
+#             T_tool_grasp.rotation = q_tool_grasp
+            
+#             # T_grasp_tool
+#             T_grasp_tool = Transform()
+#             T_grasp_tool = invert_transform(T_tool_grasp)
+#             # T_grasp_tool = T_tool_grasp
+            
+#             # print("T_tool_grasp: ", T_tool_grasp)
+#             # print("T_grasp_tool: ", T_grasp_tool)
+            
+#             # EE (tool_frame)
+#             T_base_tool = Transform()
+            
+#             # T_base_tool = T_base_grasp * T_grasp_tool
+#             T_base_tool = matrix_to_transform(
+#                 tf.transformations.concatenate_matrices(
+#                     transform_to_matrix(T_base_grasp),
+#                     transform_to_matrix(T_grasp_tool)
+#                 )
+#             )
+#             # print("p_base_tool: ", T_base_tool)            
+            
+#             # pre-skewer
+#             pre_skewer_pose = Pose()
+#             pre_skewer_pose.position.x = T_base_tool.translation.x
+#             pre_skewer_pose.position.y = T_base_tool.translation.y
+#             pre_skewer_pose.position.z = T_base_tool.translation.z + 0.08
+#             pre_skewer_pose.orientation = q_grasp
+#             userdata.pre_skewer_pose = pre_skewer_pose
+#             # print("pre_skewer_pose: ")
+#             # print(userdata.pre_skewer_pose) 
+#             post_skewer_pose = Pose()
+#             post_skewer_pose = pre_skewer_pose
+#             userdata.post_skewer_pose = post_skewer_pose
+#             # print("post_skewer_pose: ")
+#             # print(userdata.post_skewer_pose) 
+            
+#             # skewer
+#             skewer_pose = Pose()
+#             skewer_pose.position.x = T_base_tool.translation.x
+#             skewer_pose.position.y = T_base_tool.translation.y
+#             skewer_pose.position.z = T_base_tool.translation.z
+#             skewer_pose.orientation = q_grasp
+#             userdata.skewer_pose = skewer_pose
+#             # print("skewer_pose: ")
+#             # print(userdata.skewer_pose)  
+#             normal_loginfo("Skewer pose: ")
+#             normal_loginfo(str(userdata.skewer_pose))           
+
+            
+#             for i, transform in enumerate(userdata.anygrasp_transforms):
+#                 anygrasp_tf_msg = tf2_ros.TransformStamped()
+#                 anygrasp_tf_msg.header.stamp = rospy.Time.now()
+#                 anygrasp_tf_msg.header.frame_id = 'base_link'
+#                 anygrasp_tf_msg.child_frame_id = f'{self.grasp_namespace}/grasp_{i}'
+#                 anygrasp_tf_msg.transform.translation = transform.translation
+#                 anygrasp_tf_msg.transform.rotation = transform.rotation
+#                 self.anygrasp_tf_broadcaster.sendTransform(anygrasp_tf_msg)
+                
+#         # global collision_detected
+        
+#         return outcome
 
 def food_item_selector_callback(userdata, response):
     return generic_userdata_state_callback(userdata, 
@@ -1685,11 +1827,11 @@ class food_item_selector(smach_ros.ServiceState):
                  , outcomes_sm
                  , apply_collision_detection = False):
         super(food_item_selector, self).__init__(
-            service_name=FOOD_ITEM_SELECTOR_SERVICE,
-            service_spec=anygrasp_generation.srv.AnyGraspGeneration,
+            service_name='/food_location_estimator',
+            service_spec=anygrasp_generation.srv.FoodLocationGeneration,
             # request=anygrasp_generation.srv.AnyGraspGenerationRequest(update_anygrasp),
             request_key=request_key_,
-            response_slots=['anygrasp_transforms', 'success'],
+            response_slots=['food_locations', 'success'],
             outcomes=outcomes_sm,
             input_keys=input_keys_sm,
             output_keys=input_keys_sm,
@@ -1704,18 +1846,25 @@ class food_item_selector(smach_ros.ServiceState):
         outcome = super(food_item_selector, self).execute(userdata)
         # if self.apply_collision_detection:
         if userdata.success:
-            userdata.anygrasp_transform = userdata.anygrasp_transforms[0]
+            userdata.anygrasp_transform = userdata.food_locations[0]
             # print('The best grasp from AnyGrasp: ')
             # print(userdata.anygrasp_transform)
             q_base_grasp = Quaternion()
+            # ??????????
             q_base_grasp.x = 0.7071068
             q_base_grasp.y = 0.7071068
             q_base_grasp.z = 0 
             q_base_grasp.w = 0 
+                    
             grasp_orientation = Vector3()
             grasp_orientation.x = degrees2Radians(180)
             grasp_orientation.y = degrees2Radians(0)
             grasp_orientation.z = degrees2Radians(90)
+
+            # grasp_orientation.x = degrees2Radians(161.312)
+            # grasp_orientation.y = degrees2Radians(3.56916)
+            # grasp_orientation.z = degrees2Radians(90.4868)            
+            
             grasp_quaternion_tf = tf.transformations.quaternion_from_euler(grasp_orientation.x, 
                                                               grasp_orientation.y, 
                                                               grasp_orientation.z)
@@ -1738,7 +1887,7 @@ class food_item_selector(smach_ros.ServiceState):
             T_tool_grasp = Transform()
             p_tool_grasp = Vector3()
             p_tool_grasp.x = 0
-            p_tool_grasp.y = 0 
+            p_tool_grasp.y = -0.0
             p_tool_grasp.z = 0.17
             # p_tool_grasp.z = 0.180
             q_tool_grasp = Quaternion()
@@ -1797,7 +1946,7 @@ class food_item_selector(smach_ros.ServiceState):
             normal_loginfo(str(userdata.skewer_pose))           
 
             
-            for i, transform in enumerate(userdata.anygrasp_transforms):
+            for i, transform in enumerate(userdata.food_locations):
                 anygrasp_tf_msg = tf2_ros.TransformStamped()
                 anygrasp_tf_msg.header.stamp = rospy.Time.now()
                 anygrasp_tf_msg.header.frame_id = 'base_link'
@@ -1809,6 +1958,7 @@ class food_item_selector(smach_ros.ServiceState):
         # global collision_detected
         
         return outcome
+
 
 
 def get_utensil_callback(userdata, response):
@@ -1899,7 +2049,7 @@ class move_to_feeding_start_position(smach_ros.ServiceState):
                  , target_positions_
                  , input_keys_sm
                  , outcomes_sm
-                 , apply_collision_detection = True):
+                 , apply_collision_detection = False):
         super(move_to_feeding_start_position, self).__init__(
             service_name=SIMPLE_JMPE_SERVICE,
             service_spec=kortex_motion_planning.srv.KortexSimpleJmpe,
@@ -2239,7 +2389,7 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
                  , target_positions_
                  , input_keys_sm
                  , outcomes_sm
-                 , apply_collision_detection = True):
+                 , apply_collision_detection = False):
         super(move_to_feeding_initial_position, self).__init__(
             service_name=SIMPLE_JMPE_SERVICE,
             service_spec=kortex_motion_planning.srv.KortexSimpleJmpe,
@@ -2297,12 +2447,20 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
       return outcome  
 
 
+# normal transition
+# def skewer_status_check_callback(userdata, response):
+#     return state_skewer_status_check_callback(userdata, 
+#                                   response, 
+#                                   'plan_to_feeding_pose', 
+#                                   'food_item_selector')
+
+# for test: food skewer cycle
 def skewer_status_check_callback(userdata, response):
     return state_skewer_status_check_callback(userdata, 
                                   response, 
-                                  'plan_to_feeding_pose', 
+                                  'move_to_feeding_start_position', 
                                   'food_item_selector')
-
+    
 
 class skewer_status_check(smach_ros.ServiceState):
     def __init__(self, skewer_status_check_flag_, input_keys_sm, outcomes_sm):
@@ -2896,9 +3054,11 @@ def main():
     
     sm.userdata.motion_plan = JointTrajectory()
     sm.userdata.update_anygrasp = True
+    sm.userdata.update_food_locations_flag = True
     sm.userdata.success = False
     sm.userdata.message = ''
     sm.userdata.anygrasp_transforms = []
+    sm.userdata.food_locations = []
     sm.userdata.anygrasp_transform = Transform()
     sm.userdata.pre_skewer_pose = Pose()
     sm.userdata.skewer_pose = Pose()
@@ -2937,9 +3097,9 @@ def main():
 
         return start_state_map.get(start, 'door_open')
     
-    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'door_open')
+    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'plan_to_feeding_pose')
     initial_state = get_start_state(start_subtask)
-    initial_state = "get_utensil"
+    # initial_state = "plan_to_feeding_pose"
     # initial_state = 'move_to_bowl_grasping_initial_position'
     
     # Open the container
@@ -3097,7 +3257,7 @@ def main():
         
         smach.StateMachine.add('food_item_selector'
                                , food_item_selector(
-                                 'update_anygrasp'
+                                 'update_food_locations_flag'
                                 , input_keys_sm
                                 , outcomes_sm)
                                , transitions=transition_sm

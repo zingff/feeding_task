@@ -63,6 +63,7 @@
   # √ voice stream in ros topic
   # √ test it in fsm
 # * complete voice control
+# * transfer fork size from yaml
 
 
 import argparse
@@ -616,7 +617,7 @@ def wait_for_start_callback(userdata, response):
     state_name = function_name.replace('_callback', '')
     if response.start_success:
       rospy.loginfo(StateOutputStyle.success + "Received start signal." + StateOutputStyle.default)
-      return "get_utensil"
+      return "move_to_feeding_start_position"
     else:
       return "wait_for_start"
 
@@ -2928,7 +2929,7 @@ class plan_to_feeding_pose(smach_ros.ServiceState):
 #                                 'plan_to_feeding_pose') 
 
 
-def execute_to_feeding_pose_callback(userdata, response, next_state_on_success, next_state_on_failure):
+def execute_to_feeding_pose_callback(userdata, response):
     stack = inspect.stack()
     caller_frame = stack[0]
     function_name = caller_frame.function
@@ -3133,7 +3134,7 @@ def main():
 
         return start_state_map.get(start, 'door_open')
     
-    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'utensil_fetching')
+    start_subtask = get_ros_param("/fsmConfig/startSubtask", 'move_to_feeding_start_position')
     initial_state = get_start_state(start_subtask)
     # initial_state = 'move_to_bowl_grasping_initial_position'
     

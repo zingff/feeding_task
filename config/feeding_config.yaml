@@ -1,7 +1,7 @@
 fsmConfig:
   useOpt: false
   useForceSensing: true
-  startSubtask: wait_for_start
+  startSubtask: food_skewering
 
 collisionDetection:
   basicTorqueThreshold: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
@@ -37,7 +37,7 @@ foodSkewer:
   uprightSkewerTwist: [0, 0, -0.02, 0, 0, 0]
   zeroSkewerTwist: [0, 0, 0.0, 0, 0, 0]
   lpfCoefficient: 0.2
-  wrenchForceZThreshold: 8.0
+  wrenchForceZThreshold: 3
   feedingInitialPosition: [0.021247, -0.26079, 3.15111, -2.14524, 0.060838, -0.90679, 1.58046]
   skewerStatusChecker:
     pointCloudUpperLimit: 0.34
