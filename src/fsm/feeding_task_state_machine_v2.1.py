@@ -1838,7 +1838,7 @@ class food_item_selector(smach_ros.ServiceState):
             response_cb=food_item_selector_callback
         )
         self.anygrasp_tf_broadcaster = tf2_ros.TransformBroadcaster()
-        self.grasp_namespace = 'anygrasp'
+        self.grasp_namespace = 'food'
         self.collision_status = False
         self.apply_collision_detection = apply_collision_detection
 
@@ -1947,13 +1947,16 @@ class food_item_selector(smach_ros.ServiceState):
 
             
             for i, transform in enumerate(userdata.food_locations):
+              if i == 0:
                 anygrasp_tf_msg = tf2_ros.TransformStamped()
                 anygrasp_tf_msg.header.stamp = rospy.Time.now()
                 anygrasp_tf_msg.header.frame_id = 'base_link'
-                anygrasp_tf_msg.child_frame_id = f'{self.grasp_namespace}/grasp_{i}'
+                anygrasp_tf_msg.child_frame_id = f'{self.grasp_namespace}/item_{i}'
                 anygrasp_tf_msg.transform.translation = transform.translation
                 anygrasp_tf_msg.transform.rotation = transform.rotation
                 self.anygrasp_tf_broadcaster.sendTransform(anygrasp_tf_msg)
+              else:
+                continue
                 
         # global collision_detected
         
@@ -2049,7 +2052,7 @@ class move_to_feeding_start_position(smach_ros.ServiceState):
                  , target_positions_
                  , input_keys_sm
                  , outcomes_sm
-                 , apply_collision_detection = False):
+                 , apply_collision_detection = True):
         super(move_to_feeding_start_position, self).__init__(
             service_name=SIMPLE_JMPE_SERVICE,
             service_spec=kortex_motion_planning.srv.KortexSimpleJmpe,
@@ -2448,18 +2451,18 @@ class move_to_feeding_initial_position(smach_ros.ServiceState):
 
 
 # normal transition
-# def skewer_status_check_callback(userdata, response):
-#     return state_skewer_status_check_callback(userdata, 
-#                                   response, 
-#                                   'plan_to_feeding_pose', 
-#                                   'food_item_selector')
-
-# for test: food skewer cycle
 def skewer_status_check_callback(userdata, response):
     return state_skewer_status_check_callback(userdata, 
                                   response, 
-                                  'move_to_feeding_start_position', 
+                                  'plan_to_feeding_pose', 
                                   'food_item_selector')
+
+# for skewer success rate test: food skewer cycle
+# def skewer_status_check_callback(userdata, response):
+#     return state_skewer_status_check_callback(userdata, 
+#                                   response, 
+#                                   'move_to_feeding_start_position', 
+#                                   'food_item_selector')
     
 
 class skewer_status_check(smach_ros.ServiceState):
@@ -3093,6 +3096,7 @@ def main():
           , 'food_skewering': 'move_to_feeding_start_position'
           , 'food_transfer': 'move_to_feeding_initial_position'
           , 'custom1': 'plan_to_feeding_pose'
+          , 'custom2': 'move_to_bowl_grasping_post_position'
         }
 
         return start_state_map.get(start, 'door_open')

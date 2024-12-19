@@ -24,23 +24,7 @@ roslaunch kortex_motion_planning collision_detection.launch &
 PID5=$!
 sleep 1
 
-roslaunch feeding_task skewer_status_check.launch &
-PID6=$!
-sleep 1
-
-roslaunch door_open_task door_open_service.launch &
-PID7=$!
-sleep 1
-
-roslaunch anygrasp_generation bowl_grasp_generator.launch &
-PID8=$!
-sleep 1
-
-roslaunch anygrasp_generation food_location_estimator.launch &
-PID9=$!
-sleep 1
-
-wait $PID1 $PID2 $PID3 $PID4 $PID5 $PID6 $PID7 $PID8 $PID9
+wait $PID1 $PID2 $PID3 $PID4 $PID5
 
 kill $PID_ROSCORE
 

@@ -1,11 +1,32 @@
 fsmConfig:
   useOpt: false
   useForceSensing: true
-  startSubtask: food_skewering
+  # startSubtask: utensil_fetching
+  startSubtask: custom1 # plan to feeding pose
+  # startSubtask: door_open
+  # startSubtask: bowl_grasping
+  # startSubtask: food_skewering
+
+
+
+# start subtask map
+#   'door_open': 'move_to_initial_door_open_position'
+# , 'bowl_grasping': 'move_to_bowl_grasping_initial_position'
+# , 'bowl_transfer': 'move_to_bowl_grasping_post_position'
+# , 'utensil_fetching': 'get_utensil'
+# , 'food_skewering': 'move_to_feeding_start_position'
+# , 'food_transfer': 'move_to_feeding_initial_position'
+# , 'custom1': 'plan_to_feeding_pose'
+#  custom2: move to bowl grasp post position
 
 collisionDetection:
-  basicTorqueThreshold: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+  # basicTorqueThreshold: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+  # basicTorqueThreshold: [3.0, 3.0, 3.0, 3.0, 1.1, 1.1, 1.1]
+  # basicTorqueThreshold: [13.0, 13.0, 13.0, 13.0, 11.1, 11.1, 11.1]
   torqueThresholdPro: [3.0, 3.4, 3.0, 3.0, 3.0, 3.0, 3.0]
+  # for test
+  basicTorqueThreshold: [1.82008, 4.58427, 1.74046, 3.66933, 1.478248, 2.00998, 1.83975]
+
 
 rosConfig:
   topic: 
@@ -31,14 +52,17 @@ rosConfig:
     planningAttemptsNumber: 5
 
 foodTransfer:
-  feedingPose: [-0.15135, 0.235484, 0.557796, 0.3872724, -0.4914169, -0.604657, 0.4928685]
+  feedingPose: [-0.15135, 0.235484, 0.557796, 0.3872724, -0.4914169, -0.604657, 0.4928685]  # the original config, 90 deg
+  # feedingPose: [-0.0999052, 0.156969, 0.61366, -0.31551885, 0.50875377, 0.69670468, -0.39524682]  # 45 deg
 
 foodSkewer:
   uprightSkewerTwist: [0, 0, -0.02, 0, 0, 0]
   zeroSkewerTwist: [0, 0, 0.0, 0, 0, 0]
   lpfCoefficient: 0.2
-  wrenchForceZThreshold: 3
-  feedingInitialPosition: [0.021247, -0.26079, 3.15111, -2.14524, 0.060838, -0.90679, 1.58046]
+  # sometimes 3.5 is ok
+  wrenchForceZThreshold: 6
+  # feedingInitialPosition: [0.021247, -0.26079, 3.15111, -2.14524, 0.060838, -0.90679, 1.58046]
+  feedingInitialPosition: [6.27527, -0.0558194, 3.14563, -1.75332, 0.0116485, -1.42073, 1.56499]
   skewerStatusChecker:
     pointCloudUpperLimit: 0.34
     pointCloudLowerLimit: 0.28
@@ -46,11 +70,23 @@ foodSkewer:
     pointCloudConfidence: 50
 
 utensil:
-  holderPosition: [0.302989, -0.31447, 3.09643, -2.40708, 6.26457, -1.063090, 1.81463]
-  utensilPosition: [0.206082, -0.305769, 2.64442, -2.3651, 6.09785, -1.06134, 1.36814]
+
+  # holderPosition: [0.302989, -0.31447, 3.09643, -2.40708, 6.26457, -1.063090, 1.81463]
+  # utensilPosition: [0.206082, -0.305769, 2.64442, -2.3651, 6.09785, -1.06134, 1.36814]
+  # update 20240310 cwd ztmd sb bitch
+  holderPosition: [0.303575, -0.293928, 3.12158, -2.41188, 6.26642, -1.03737, 1.83855]
+  utensilPosition: [0.222927, -0.317169, 2.77514, -2.38897, 6.13577, -1.06355, 1.49339
+]
+
+
 
 bowlTransfer:
+  # very original version
   initialPosition: [1.12982, 0.575937, 3.04003, -2.09705, 5.67489, 1.18636, 0.290636]
+  # a slight adjustment to be more gentle
+  # initialPosition: [0.0112281, -0.256079, 3.12084, -2.14266, 0.0332854, -0.906696, 1.54607]
+  # a vertical pose to detect food
+  # initialPosition: [6.26425, 0.200712, 3.15294, -1.62555, 0.0114107, -1.33489, 1.55935]
   postPosition: [1.38236, 0.466606, 3.09348, -2.22906, 6.28229, 1.04642, 0.070713] 
   placementPose: [0.369719, -0.128634,  0.118447, -0.5591718754025408, -0.5122518858574863, -0.4673708958580917, 0.4544108987459028]
   bowlGraspingGripperPosition: 1.0

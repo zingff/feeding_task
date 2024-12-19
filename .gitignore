@@ -10,3 +10,5 @@ src/fsm/test.py
 src/functions/bak.cpp
 src/utilities/bak.py
 src/actions/*
+
+src/test/

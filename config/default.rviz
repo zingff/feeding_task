@@ -29,7 +29,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: Image
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -193,6 +193,14 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        anygrasp/grasp_0:
+          Value: true
+        anygrasp/grasp_1:
+          Value: true
+        anygrasp/grasp_2:
+          Value: true
+        anygrasp/grasp_3:
+          Value: true
         base_link:
           Value: false
         bracelet_link:
@@ -205,6 +213,8 @@ Visualization Manager:
           Value: false
         end_effector_link:
           Value: false
+        food/item_0:
+          Value: true
         forearm_link:
           Value: false
         half_arm_1_link:
@@ -241,6 +251,8 @@ Visualization Manager:
           Value: false
         tool_frame:
           Value: false
+        world:
+          Value: true
       Marker Alpha: 1
       Marker Scale: 0.30000001192092896
       Name: TF
@@ -248,37 +260,55 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        base_link:
-          shoulder_link:
-            half_arm_1_link:
-              half_arm_2_link:
-                forearm_link:
-                  spherical_wrist_1_link:
-                    spherical_wrist_2_link:
-                      bracelet_link:
-                        end_effector_link:
-                          camera_color_frame:
-                            {}
-                          camera_link:
-                            camera_depth_frame:
-                              {}
-                          robotiq_arg2f_base_link:
-                            left_inner_knuckle:
-                              {}
-                            left_outer_knuckle:
-                              left_outer_finger:
-                                left_inner_finger:
-                                  left_inner_finger_pad:
-                                    {}
-                            right_inner_knuckle:
-                              {}
-                            right_outer_knuckle:
-                              right_outer_finger:
-                                right_inner_finger:
-                                  right_inner_finger_pad:
-                                    {}
-                          tool_frame:
-                            {}
+        world:
+          base_link:
+            anygrasp/grasp_0:
+              {}
+            anygrasp/grasp_1:
+              {}
+            anygrasp/grasp_2:
+              {}
+            anygrasp/grasp_3:
+              {}
+            food/item_0:
+              {}
+            shoulder_link:
+              half_arm_1_link:
+                half_arm_2_link:
+                  forearm_link:
+                    spherical_wrist_1_link:
+                      spherical_wrist_2_link:
+                        bracelet_link:
+                          {}
+          camera_color_frame:
+            {}
+          camera_depth_frame:
+            {}
+          camera_link:
+            {}
+          end_effector_link:
+            {}
+          left_inner_finger_pad:
+            {}
+          left_outer_finger:
+            left_inner_finger:
+              {}
+          right_inner_finger_pad:
+            {}
+          right_outer_finger:
+            right_inner_finger:
+              {}
+          robotiq_arg2f_base_link:
+            left_inner_knuckle:
+              {}
+            left_outer_knuckle:
+              {}
+            right_inner_knuckle:
+              {}
+            right_outer_knuckle:
+              {}
+          tool_frame:
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -366,7 +396,7 @@ Visualization Manager:
       Marker Topic: /tesseract/display_tool_path
       Name: MarkerArray
       Namespaces:
-        {}
+        tesseract/segment_0/poses: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -397,7 +427,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.3160958290100098
+      Distance: 2.8967130184173584
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -405,17 +435,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.1619860678911209
-        Y: -0.15192630887031555
-        Z: 0.2884445786476135
+        X: -0.1646917313337326
+        Y: -0.04668743908405304
+        Z: 0.33621206879615784
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.215203657746315
+      Pitch: 0.1202036514878273
       Target Frame: <Fixed Frame>
-      Yaw: 1.4008700847625732
+      Yaw: 6.254055500030518
     Saved: ~
 Window Geometry:
   Displays:
@@ -436,4 +466,4 @@ Window Geometry:
     collapsed: true
   Width: 1169
   X: 88
-  Y: 285
+  Y: 306

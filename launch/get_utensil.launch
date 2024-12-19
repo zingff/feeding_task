@@ -1,9 +1,8 @@
 <launch>
-    <!-- <node pkg="anygrasp_generation" type="anygrasp_publisher.py" name="anygrasp_publisher" output="screen" required="true"/> -->
-
     <group>
-        <node pkg="feeding_task" name="get_utensil" type="get_utensil" output="screen" required="true"/>
-
+        <rosparam file="$(find feeding_task)/config/feeding_config.yaml" command="load" />
+        
+        <node pkg="kortex_motion_planning" name="get_utensil_action" type="get_utensil_action" output="screen" required="true"/>
     </group>
 
 </launch>

@@ -1,0 +1,849 @@
+[ INFO] [1715245334.330396182]: Original trajectory waypoints:
+[ INFO] [1715245334.330495792]: Waypoint 0: Time=0.00 s, Positions=0.021142, -0.260673, 3.151025, -2.145258, 0.060888, -0.906900, 1.580365
+[ INFO] [1715245334.330516882]: Waypoint 1: Time=1.74 s, Positions=-0.246029, -0.467915, 3.594195, -2.151726, -0.259200, -1.182820, 2.157203
+[ INFO] [1715245334.330534867]: Waypoint 2: Time=2.26 s, Positions=-0.415921, -0.555314, 3.866660, -2.165776, -0.454822, -1.483926, 2.517532
+[ INFO] [1715245334.330551388]: Waypoint 3: Time=2.73 s, Positions=-0.569125, -0.556111, 4.020755, -2.254493, -0.630883, -1.722032, 2.816559
+[ INFO] [1715245334.330565836]: Waypoint 4: Time=3.23 s, Positions=-0.750855, -0.480773, 4.023598, -2.407180, -0.835261, -1.871746, 3.133630
+[ INFO] [1715245334.330579031]: Waypoint 5: Time=3.89 s, Positions=-1.013959, -0.306446, 3.810646, -2.510821, -1.147750, -1.941519, 3.509322
+[ INFO] [1715245334.330738395]: Waypoint 6: Time=6.21 s, Positions=-1.332860, -0.064256, 3.502759, -2.362062, -1.467068, -1.982294, 3.831513
+
+[ INFO] [1715245334.330760577]: Modified trajectory waypoints:
+[ INFO] [1715245334.330796325]: Waypoint 0: Time=0.00 s, Positions=0.021142, 6.022512, 3.151025, 4.137928, 0.060888, 5.376285, 1.580365
+[ WARN] [1715245334.330821503]: Waypoint 0: Time=0.00 s, Velocity=0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000
+[ INFO] [1715245334.330842093]: Waypoint 1: Time=3.48 s, Positions=-0.246029, -0.467915, 3.594195, -2.151726, -0.259200, -1.182820, 2.157203
+[ WARN] [1715245334.330892889]: Waypoint 1: Time=3.48 s, Velocity=-0.314024, -0.206891, 0.531181, 0.003911, -0.364308, -0.503665, 0.676875
+[ INFO] [1715245334.330904722]: Waypoint 2: Time=4.51 s, Positions=-0.415921, -0.555314, 3.866660, -2.165776, -0.454822, -1.483926, 2.517532
+[ WARN] [1715245334.330918047]: Waypoint 2: Time=4.51 s, Velocity=-0.327532, -0.094639, 0.461543, -0.096733, -0.378373, -0.587276, 0.672608
+[ INFO] [1715245334.330938627]: Waypoint 3: Time=5.45 s, Positions=-0.569125, -0.556111, 4.020755, -2.254493, -0.630883, -1.722032, 2.816559
+[ WARN] [1715245334.330958364]: Waypoint 3: Time=5.45 s, Velocity=-0.339334, 0.081737, 0.178778, -0.273809, -0.381305, -0.410653, 0.629009
+[ INFO] [1715245334.330975807]: Waypoint 4: Time=6.45 s, Positions=-0.750855, -0.480773, 4.023598, -2.407180, -0.835261, -1.871746, 3.133630
+[ WARN] [1715245334.330985877]: Waypoint 4: Time=6.45 s, Velocity=-0.382915, 0.211160, -0.167212, -0.287044, -0.446766, -0.195085, 0.623018
+[ INFO] [1715245334.330995595]: Waypoint 5: Time=7.78 s, Positions=-1.013959, -0.306446, 3.810646, -2.510821, -1.147750, -1.941519, 3.509322
+[ WARN] [1715245334.331006225]: Waypoint 5: Time=7.78 s, Velocity=-0.406055, 0.297147, -0.397502, 0.012484, -0.456840, -0.057322, 0.492875
+[ INFO] [1715245334.331026925]: Waypoint 6: Time=12.43 s, Positions=-1.332860, -0.064256, 3.502759, -2.362062, -1.467068, -1.982294, 3.831513
+[ WARN] [1715245334.331047464]: Waypoint 6: Time=12.43 s, Velocity=0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000
+[ INFO] [1715245334.331064998]: Please pay attention! Moving the arm!
+
+
+zing@rog:~$ rostopic echo /tesseract/display_tool_path 
+markers: 
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138623
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.2951350273544226
+        y: 0.014152513085306373
+        z: 0.37759893995531413
+      orientation: 
+        x: -0.5026977501911356
+        y: 0.5029175382546325
+        z: 0.4970678134636624
+        w: 0.4972851400224271
+    scale: 
+      x: 0.0014999999999999987
+      y: 0.0014999999999999987
+      z: 0.029999999999999975
+    color: 
+      r: 1.0
+      g: 0.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138624
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.31012440997774904
+        y: -0.0008491584106582802
+        z: 0.3781168790431231
+      orientation: 
+        x: 6.11464435539725e-05
+        y: 0.6988321961187409
+        z: -6.258608799482406e-05
+        w: 0.7152856450481525
+    scale: 
+      x: 0.0014999999999999992
+      y: 0.0014999999999999992
+      z: 0.029999999999999985
+    color: 
+      r: 0.0
+      g: 1.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138625
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.295477425963113
+        y: -0.0010155733436140086
+        z: 0.3627728846040898
+      orientation: 
+        x: 0.223624917506383
+        y: 0.9745895647103984
+        z: -0.0028907752465889437
+        w: 0.012598414437283345
+    scale: 
+      x: 0.0014999999999999987
+      y: 0.0014999999999999987
+      z: 0.029999999999999975
+    color: 
+      r: 0.0
+      g: 0.0
+      b: 1.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138626
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.21606261730793194
+        y: 0.05177896078890185
+        z: 0.4130764737662107
+      orientation: 
+        x: -0.4638853351791603
+        y: 0.3286535147490341
+        z: 0.6712780172957296
+        w: 0.4755870966966395
+    scale: 
+      x: 0.0014999999999999992
+      y: 0.0014999999999999992
+      z: 0.029999999999999985
+    color: 
+      r: 1.0
+      g: 0.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138627
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.23497551196598032
+        y: 0.04285004907995058
+        z: 0.40953007399357966
+      orientation: 
+        x: -0.0971150023175474
+        y: 0.6572554594907574
+        z: 0.1092462353442441
+        w: 0.7393572866737477
+    scale: 
+      x: 0.0014999999999999994
+      y: 0.0014999999999999994
+      z: 0.02999999999999999
+    color: 
+      r: 0.0
+      g: 1.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138628
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.22074301453236755
+        y: 0.04412934289904073
+        z: 0.39385208228141694
+      orientation: 
+        x: -0.6925499748778203
+        y: 0.6959815505751804
+        z: 0.13380275408645292
+        w: 0.13446574491140234
+    scale: 
+      x: 0.0014999999999999992
+      y: 0.0014999999999999992
+      z: 0.02999999999999998
+    color: 
+      r: 0.0
+      g: 0.0
+      b: 1.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138629
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.13789861337995035
+        y: 0.08618428380661054
+        z: 0.447064294573719
+      orientation: 
+        x: -0.40391358359893414
+        y: 0.16518352698236605
+        z: 0.8328091155895687
+        w: 0.34058361145077604
+    scale: 
+      x: 0.0014999999999999994
+      y: 0.0014999999999999994
+      z: 0.02999999999999999
+    color: 
+      r: 1.0
+      g: 0.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138630
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.1585588002803047
+        y: 0.08527703789823968
+        z: 0.44233845262712673
+      orientation: 
+        x: -0.15733726310640064
+        y: 0.5685110650872716
+        z: 0.21537941721123594
+        w: 0.778236378713609
+    scale: 
+      x: 0.0015
+      y: 0.0015
+      z: 0.03
+    color: 
+      r: 0.0
+      g: 1.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138631
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.14426357849289195
+        y: 0.08807413296899042
+        z: 0.4269169451387564
+      orientation: 
+        x: 0.7182842650817778
+        y: -0.5882837832515454
+        z: -0.28738482662460946
+        w: -0.23537176195355816
+    scale: 
+      x: 0.0014999999999999992
+      y: 0.0014999999999999992
+      z: 0.029999999999999985
+    color: 
+      r: 0.0
+      g: 0.0
+      b: 1.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138632
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.06156213106032253
+        y: 0.11858956433132282
+        z: 0.4785863866622184
+      orientation: 
+        x: -0.3732685938043974
+        y: 0.02288070812897846
+        z: 0.9257035963640092
+        w: 0.056744001916887374
+    scale: 
+      x: 0.0014999999999999998
+      y: 0.0014999999999999998
+      z: 0.029999999999999995
+    color: 
+      r: 1.0
+      g: 0.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138633
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.08136522938146462
+        y: 0.12568723457029876
+        z: 0.47585501812942493
+      orientation: 
+        x: -0.17004245194201903
+        y: 0.44942647031803046
+        z: 0.3103405495599427
+        w: 0.8202378652646167
+    scale: 
+      x: 0.0014999999999999994
+      y: 0.0014999999999999994
+      z: 0.02999999999999999
+    color: 
+      r: 0.0
+      g: 1.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138634
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.06654544367099727
+        y: 0.12970229295254915
+        z: 0.4612176256812138
+      orientation: 
+        x: 0.7083824215792447
+        y: -0.46583904311418606
+        z: -0.44305624558580664
+        w: -0.2913580168030291
+    scale: 
+      x: 0.0014999999999999994
+      y: 0.0014999999999999994
+      z: 0.02999999999999999
+    color: 
+      r: 0.0
+      g: 0.0
+      b: 1.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138635
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.012475532926053058
+        y: 0.15070599294070788
+        z: 0.5072708154745443
+      orientation: 
+        x: -0.4131031001152531
+        y: -0.11491781637334657
+        z: 0.8703556619661085
+        w: -0.24211721508122064
+    scale: 
+      x: 0.0014999999999999996
+      y: 0.0014999999999999996
+      z: 0.029999999999999992
+    color: 
+      r: 1.0
+      g: 0.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138636
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: 0.00407611919399423
+        y: 0.16383028302991265
+        z: 0.5092191023505808
+      orientation: 
+        x: -0.13801172921776658
+        y: 0.31602237670027944
+        z: 0.37566579066862654
+        w: 0.8602080177168453
+    scale: 
+      x: 0.0014999999999999996
+      y: 0.0014999999999999996
+      z: 0.029999999999999992
+    color: 
+      r: 0.0
+      g: 1.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138637
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.011601526328563132
+        y: 0.16846500803283523
+        z: 0.49570130833615955
+      orientation: 
+        x: 0.6773278101993514
+        y: -0.33277252188478873
+        z: -0.58888339583312
+        w: -0.2893196023795174
+    scale: 
+      x: 0.0014999999999999996
+      y: 0.0014999999999999996
+      z: 0.029999999999999992
+    color: 
+      r: 0.0
+      g: 0.0
+      b: 1.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138638
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.08430631712689539
+        y: 0.18431548429526862
+        z: 0.5334412150087335
+      orientation: 
+        x: -0.48834663547770213
+        y: -0.2705318055900921
+        z: 0.7257368169502993
+        w: -0.4020400207748237
+    scale: 
+      x: 0.0014999999999999998
+      y: 0.0014999999999999998
+      z: 0.029999999999999995
+    color: 
+      r: 1.0
+      g: 0.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138639
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.07260372498825082
+        y: 0.20001131658704985
+        z: 0.5416076209443218
+      orientation: 
+        x: -0.07135132554254524
+        y: 0.1853789399453802
+        z: 0.3520481528779864
+        w: 0.914661541239844
+    scale: 
+      x: 0.0014999999999999994
+      y: 0.0014999999999999994
+      z: 0.02999999999999999
+    color: 
+      r: 0.0
+      g: 1.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138640
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.08926231872912038
+        y: 0.20451557701337242
+        z: 0.5292705673013921
+      orientation: 
+        x: -0.6414185919099282
+        y: 0.19817586738861026
+        z: 0.708125173588575
+        w: 0.21878586349946721
+    scale: 
+      x: 0.0015
+      y: 0.0015
+      z: 0.03
+    color: 
+      r: 0.0
+      g: 0.0
+      b: 1.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138641
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.15456302033959593
+        y: 0.22083414106536456
+        z: 0.5580371088833904
+      orientation: 
+        x: -0.5465143215997642
+        y: -0.43964205394273603
+        z: 0.5553707003018854
+        w: -0.4467665452309017
+    scale: 
+      x: 0.0014999999999999994
+      y: 0.0014999999999999994
+      z: 0.02999999999999999
+    color: 
+      r: 1.0
+      g: 0.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138642
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.14811887852483455
+        y: 0.23501630052917802
+        z: 0.5724363932133218
+      orientation: 
+        x: 0.0078624340718945
+        y: 0.10920200139216277
+        z: -0.07138139305206041
+        w: 0.9914221107824651
+    scale: 
+      x: 0.0014999999999999994
+      y: 0.0014999999999999994
+      z: 0.02999999999999999
+    color: 
+      r: 0.0
+      g: 1.0
+      b: 0.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+  - 
+    header: 
+      seq: 0
+      stamp: 
+        secs: 1715245764
+        nsecs: 320724981
+      frame_id: "world"
+    ns: "tesseract/segment_0/poses"
+    id: 1635138643
+    type: 3
+    action: 0
+    pose: 
+      position: 
+        x: -0.16564112845938292
+        y: 0.23867192890168176
+        z: 0.5610518801173057
+      orientation: 
+        x: -0.6219125758534664
+        y: 0.0685230825350332
+        z: 0.7753905194081022
+        w: 0.08543346865975347
+    scale: 
+      x: 0.0015
+      y: 0.0015
+      z: 0.03
+    color: 
+      r: 0.0
+      g: 0.0
+      b: 1.0
+      a: 1.0
+    lifetime: 
+      secs: 0
+      nsecs:         0
+    frame_locked: False
+    points: []
+    colors: []
+    text: ''
+    mesh_resource: ''
+    mesh_use_embedded_materials: False
+---
